@@ -45,7 +45,7 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Monthly Attendance Report", icon: <ListAlt />, path: "/Monthly-Attendance-report" },
     { text: "Request View", icon: <Event />, path: "/Request-View" },
     { text: "Request Bulk Approval", icon: <DoneAll />, path: "/admin/request-bulk-approval" },
-    { text: "Holiday Select", icon: <Flag />, path: "/admin/holiday-select" },
+    { text: "Holiday Select", icon: <Flag />, path: "/holiday-select" },
     { text: "Date Select", icon: <CalendarMonth />, path: "/admin/date-select" },
     { text: "Apology Request", icon: <NoteAlt />, path: "/admin/apology-request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/admin/apology-request-view" },

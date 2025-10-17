@@ -8,6 +8,7 @@ import Namewisereport from './Pages/Namewisereport';
 import DateWiseReport from './Pages/Datewisereport';
 import Monthlyattendancereport from './Pages/Monthlyattendancereport';
 import RequestView from './Pages/RequestView';
+import HolidaySelect from './Pages/HolidaySelect';
 
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
       <Route path='/Date-wise-report' element={<DateWiseReport/>} />
       <Route path='/Monthly-Attendance-report' element={<Monthlyattendancereport/>} />
       <Route path='/Request-View' element={<RequestView/>} />
+      <Route path='/holiday-select' element={<HolidaySelect/>} />
 
         </Route>
       </Routes>
