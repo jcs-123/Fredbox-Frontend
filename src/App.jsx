@@ -9,6 +9,9 @@ import DateWiseReport from './Pages/Datewisereport';
 import Monthlyattendancereport from './Pages/Monthlyattendancereport';
 import RequestView from './Pages/RequestView';
 import HolidaySelect from './Pages/HolidaySelect';
+import DateSelect from './Pages/DateSelect';
+import ComplaintDetails from './Pages/ComplaintDetails';
+import StudentDetails from './Pages/StudentDetails';
 
 
 function App() {
@@ -28,6 +31,10 @@ function App() {
       <Route path='/Monthly-Attendance-report' element={<Monthlyattendancereport/>} />
       <Route path='/Request-View' element={<RequestView/>} />
       <Route path='/holiday-select' element={<HolidaySelect/>} />
+      <Route path="/date-select" element={<DateSelect />} />
+      <Route path="/complaint-details" element={<ComplaintDetails />} />
+      <Route path="/student-details" element={<StudentDetails />} />
+
 
         </Route>
       </Routes>

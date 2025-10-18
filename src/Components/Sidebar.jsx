@@ -46,10 +46,10 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Request View", icon: <Event />, path: "/Request-View" },
     { text: "Request Bulk Approval", icon: <DoneAll />, path: "/admin/request-bulk-approval" },
     { text: "Holiday Select", icon: <Flag />, path: "/holiday-select" },
-    { text: "Date Select", icon: <CalendarMonth />, path: "/admin/date-select" },
+    { text: "Date Select", icon: <CalendarMonth />, path: "/date-select" },
     { text: "Apology Request", icon: <NoteAlt />, path: "/admin/apology-request" },
-    { text: "Apology Request View", icon: <NoteAlt />, path: "/admin/apology-request-view" },
-    { text: "Complaint View", icon: <ErrorOutline />, path: "/admin/complaint-view" },
+    { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
+    { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },
   ];
 
   const drawerContent = (
