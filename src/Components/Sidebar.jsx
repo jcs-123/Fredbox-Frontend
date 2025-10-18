@@ -61,7 +61,6 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
     { text: "Mess Cut Report", icon: <Report />, path: "/mess-cut-report" },
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
-<<<<<<< HEAD
     { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
 
    {
@@ -103,24 +102,12 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
 
 
     { text: "Request View", icon: <Event />, path: "/request-view" },
-    { text: "Request Bulk Approval", icon: <DoneAll />, path: "/request-bulk-approve" },
-    { text: "Holiday Select", icon: <Flag />, path: "/admin/holiday-select" },
-    { text: "Date Select", icon: <CalendarMonth />, path: "/admin/date-select" },
-    { text: "Apology Request", icon: <NoteAlt />, path: "/apology-request" },
-    { text: "Apology Request View", icon: <NoteAlt />, path: "/admin/apology-request-view" },
-    { text: "Complaint View", icon: <ErrorOutline />, path: "/admin/complaint-view" },
-=======
-    { text: "Date Wise Report", icon: <CalendarMonth />, path: "/Date-wise-report" },
-    { text: "Attendance Report", icon: <Assessment />, path: "/admin/attendance-report" },
-    { text: "Monthly Attendance Report", icon: <ListAlt />, path: "/Monthly-Attendance-report" },
-    { text: "Request View", icon: <Event />, path: "/Request-View" },
-    { text: "Request Bulk Approval", icon: <DoneAll />, path: "/admin/request-bulk-approval" },
+    { text: "Request Bulk Approval", icon: <DoneAll />, path: "/Request-Bulk-Aprove" },
     { text: "Holiday Select", icon: <Flag />, path: "/holiday-select" },
     { text: "Date Select", icon: <CalendarMonth />, path: "/date-select" },
-    { text: "Apology Request", icon: <NoteAlt />, path: "/admin/apology-request" },
+    { text: "Apology Request", icon: <NoteAlt />, path: "/Aplology-Request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
     { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },
->>>>>>> f2fa78032c421f99f6e7485540bbd5e7942c9f49
   ];
 
   /* ======================== DRAWER CONTENT ========================== */

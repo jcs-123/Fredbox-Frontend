@@ -8,15 +8,12 @@ import Namewisereport from './Pages/Namewisereport';
 import DateWiseReport from './Pages/Datewisereport';
 import Monthlyattendancereport from './Pages/Monthlyattendancereport';
 import RequestView from './Pages/RequestView';
-<<<<<<< HEAD
 import RequestBulkAproval from './Pages/RequestBulkAproval';
 import ApologyRequest from './Pages/ApologyRequest';
-=======
 import HolidaySelect from './Pages/HolidaySelect';
 import DateSelect from './Pages/DateSelect';
 import ComplaintDetails from './Pages/ComplaintDetails';
 import StudentDetails from './Pages/StudentDetails';
->>>>>>> f2fa78032c421f99f6e7485540bbd5e7942c9f49
 
 
 function App() {
@@ -35,16 +32,13 @@ function App() {
       <Route path='/Date-wise-report' element={<DateWiseReport/>} />
       <Route path='/Monthly-Attendance-report' element={<Monthlyattendancereport/>} />
       <Route path='/Request-View' element={<RequestView/>} />
-<<<<<<< HEAD
         <Route path='/Request-Bulk-Aprove' element={<RequestBulkAproval/>} />
                 <Route path='/Aplology-Request' element={<ApologyRequest/>}
                 />
-=======
       <Route path='/holiday-select' element={<HolidaySelect/>} />
       <Route path="/date-select" element={<DateSelect />} />
       <Route path="/complaint-details" element={<ComplaintDetails />} />
       <Route path="/student-details" element={<StudentDetails />} />
->>>>>>> f2fa78032c421f99f6e7485540bbd5e7942c9f49
 
 
         </Route>
