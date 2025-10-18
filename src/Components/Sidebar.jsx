@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Drawer,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Collapse,
   Divider,
   Box,
   Typography,
@@ -26,6 +27,18 @@ import {
   DoneAll,
   NoteAlt,
   ErrorOutline,
+  ExpandLess,
+  ExpandMore,
+  BarChart,
+  School,
+  Today,
+  CheckCircle,
+  AssignmentTurnedIn,
+  Fastfood,
+  NoMeals,
+  Summarize,
+  Sms,
+  CompareArrows,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 
@@ -36,22 +49,68 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const location = useLocation();
 
+  // Track which dropdown is open
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  const handleDropdownToggle = (menu) => {
+    setOpenDropdown(openDropdown === menu ? null : menu);
+  };
+
+  /* ======================== MENU STRUCTURE ========================== */
   const menuItems = [
     { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
     { text: "Mess Cut Report", icon: <Report />, path: "/mess-cut-report" },
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
-    { text: "Date Wise Report", icon: <CalendarMonth />, path: "/Date-wise-report" },
-    { text: "Attendance Report", icon: <Assessment />, path: "/admin/attendance-report" },
-    { text: "Monthly Attendance Report", icon: <ListAlt />, path: "/Monthly-Attendance-report" },
-    { text: "Request View", icon: <Event />, path: "/Request-View" },
-    { text: "Request Bulk Approval", icon: <DoneAll />, path: "/admin/request-bulk-approval" },
+    { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
+
+   {
+  text: "Attendance Reports",
+  icon: <Assessment />, // main section icon
+  subMenu: [
+    {
+      text: "Attendance Sheet",
+      icon: <AssignmentTurnedIn />, // ✅ clipboard/checklist icon
+      path: "/admin/attendance/daily",
+    },
+    {
+      text: "Present But Mess Cut",
+      icon: <Fastfood />, // ✅ represents mess/canteen-related
+      path: "/admin/attendance/monthly",
+    },
+    {
+      text: "Absent But No Mess Cut",
+      icon: <NoMeals />, // ✅ crossed plate = no mess deduction
+      path: "/admin/attendance/department",
+    },
+    {
+      text: "Absentees Report",
+      icon: <Summarize />, // ✅ report/summary style icon
+      path: "/admin/attendance/summary",
+    },
+    {
+      text: "Absent SMS",
+      icon: <Sms />, // ✅ for sending text messages
+      path: "/admin/attendance/sms",
+    },
+    {
+      text: "Absent Comparison",
+      icon: <CompareArrows />, // ✅ comparison symbol
+      path: "/admin/attendance/comparison",
+    },
+  ],
+},
+
+
+    { text: "Request View", icon: <Event />, path: "/request-view" },
+    { text: "Request Bulk Approval", icon: <DoneAll />, path: "/Request-Bulk-Aprove" },
     { text: "Holiday Select", icon: <Flag />, path: "/holiday-select" },
     { text: "Date Select", icon: <CalendarMonth />, path: "/date-select" },
-    { text: "Apology Request", icon: <NoteAlt />, path: "/admin/apology-request" },
+    { text: "Apology Request", icon: <NoteAlt />, path: "/Aplology-Request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
     { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },
   ];
 
+  /* ======================== DRAWER CONTENT ========================== */
   const drawerContent = (
     <Box
       sx={{
@@ -61,7 +120,7 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
         background: "linear-gradient(180deg, #f8f9fb 0%, #edf2f7 100%)",
       }}
     >
-      {/* ==== Brand / Logo ==== */}
+      {/* ==== Logo ==== */}
       <Box
         sx={{
           textAlign: "center",
@@ -85,7 +144,109 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
       <Box sx={{ flexGrow: 1, overflowY: "auto", mt: 1 }}>
         <List disablePadding>
           {menuItems.map((item) => {
-            const active = location.pathname === item.path;
+            const isActive = location.pathname === item.path;
+
+            /* ===== Dropdown Menu ===== */
+            if (item.subMenu) {
+              const isOpen = openDropdown === item.text;
+              return (
+                <React.Fragment key={item.text}>
+                  <ListItemButton
+                    onClick={() => handleDropdownToggle(item.text)}
+                    sx={{
+                      mx: 1,
+                      my: 0.3,
+                      borderRadius: 2,
+                      transition: "all 0.3s ease",
+                      backgroundColor: isOpen
+                        ? "rgba(25,118,210,0.1)"
+                        : "transparent",
+                      "&:hover": {
+                        backgroundColor: "rgba(25,118,210,0.12)",
+                        transform: "translateX(3px)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        color: "#1976d2",
+                        minWidth: 40,
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontWeight: 600,
+                        fontSize: "0.93rem",
+                        color: "#1976d2",
+                      }}
+                    />
+                    {isOpen ? (
+                      <ExpandLess sx={{ color: "#1976d2" }} />
+                    ) : (
+                      <ExpandMore sx={{ color: "#1976d2" }} />
+                    )}
+                  </ListItemButton>
+
+                  {/* Submenu Items */}
+                  <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {item.subMenu.map((sub) => (
+                        <ListItemButton
+                          key={sub.text}
+                          component={Link}
+                          to={sub.path}
+                          onClick={isMobile ? handleDrawerToggle : undefined}
+                          sx={{
+                            pl: 7,
+                            mx: 1,
+                            my: 0.2,
+                            borderRadius: 2,
+                            transition: "all 0.2s ease",
+                            backgroundColor:
+                              location.pathname === sub.path
+                                ? "rgba(25,118,210,0.12)"
+                                : "transparent",
+                            "&:hover": {
+                              backgroundColor: "rgba(25,118,210,0.1)",
+                              transform: "translateX(4px)",
+                            },
+                          }}
+                        >
+                          <ListItemIcon
+                            sx={{
+                              color:
+                                location.pathname === sub.path
+                                  ? "#1976d2"
+                                  : "rgba(0,0,0,0.6)",
+                              minWidth: 40,
+                            }}
+                          >
+                            {sub.icon}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={sub.text}
+                            primaryTypographyProps={{
+                              fontWeight:
+                                location.pathname === sub.path ? 600 : 400,
+                              fontSize: "0.88rem",
+                              color:
+                                location.pathname === sub.path
+                                  ? "#1976d2"
+                                  : "rgba(0,0,0,0.85)",
+                            }}
+                          />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Collapse>
+                </React.Fragment>
+              );
+            }
+
+            /* ===== Normal Menu Item ===== */
             return (
               <Tooltip
                 key={item.text}
@@ -102,20 +263,19 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
                     my: 0.3,
                     borderRadius: 2,
                     transition: "all 0.3s ease",
-                    backgroundColor: active
+                    backgroundColor: isActive
                       ? "rgba(25,118,210,0.12)"
                       : "transparent",
                     "&:hover": {
                       backgroundColor: "rgba(25,118,210,0.1)",
-                      transform: "translateX(4px)",
+                      transform: "translateX(3px)",
                     },
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      color: active ? "#1976d2" : "rgba(0,0,0,0.6)",
+                      color: isActive ? "#1976d2" : "rgba(0,0,0,0.6)",
                       minWidth: 40,
-                      transition: "color 0.3s ease",
                     }}
                   >
                     {item.icon}
@@ -123,9 +283,9 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
                   <ListItemText
                     primary={item.text}
                     primaryTypographyProps={{
-                      fontWeight: active ? 600 : 400,
+                      fontWeight: isActive ? 600 : 400,
                       fontSize: "0.93rem",
-                      color: active ? "#1976d2" : "rgba(0,0,0,0.85)",
+                      color: isActive ? "#1976d2" : "rgba(0,0,0,0.85)",
                     }}
                   />
                 </ListItemButton>
@@ -165,6 +325,7 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     </Box>
   );
 
+  /* ======================== DRAWERS ========================== */
   return (
     <>
       {/* ==== Mobile Drawer ==== */}
@@ -198,10 +359,8 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
             boxSizing: "border-box",
             position: "fixed",
             height: "100vh",
-            overflow: "hidden",
             borderRight: "1px solid #e0e0e0",
             boxShadow: "2px 0 8px rgba(0,0,0,0.05)",
-            transition: "all 0.3s ease-in-out",
           },
         }}
         open
