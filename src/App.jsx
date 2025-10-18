@@ -8,6 +8,8 @@ import Namewisereport from './Pages/Namewisereport';
 import DateWiseReport from './Pages/Datewisereport';
 import Monthlyattendancereport from './Pages/Monthlyattendancereport';
 import RequestView from './Pages/RequestView';
+import RequestBulkAproval from './Pages/RequestBulkAproval';
+import ApologyRequest from './Pages/ApologyRequest';
 
 
 function App() {
@@ -26,6 +28,10 @@ function App() {
       <Route path='/Date-wise-report' element={<DateWiseReport/>} />
       <Route path='/Monthly-Attendance-report' element={<Monthlyattendancereport/>} />
       <Route path='/Request-View' element={<RequestView/>} />
+        <Route path='/Request-Bulk-Aprove' element={<RequestBulkAproval/>} />
+                <Route path='/Aplology-Request' element={<ApologyRequest/>}
+                />
+
 
         </Route>
       </Routes>
