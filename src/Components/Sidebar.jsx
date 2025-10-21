@@ -70,32 +70,27 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     {
       text: "Attendance Sheet",
       icon: <AssignmentTurnedIn />, // ✅ clipboard/checklist icon
-      path: "/admin/attendance/daily",
+      path: "/attendance-report",
     },
     {
       text: "Present But Mess Cut",
       icon: <Fastfood />, // ✅ represents mess/canteen-related
-      path: "/admin/attendance/monthly",
+      path: "/present-messcut-report",
     },
     {
       text: "Absent But No Mess Cut",
       icon: <NoMeals />, // ✅ crossed plate = no mess deduction
-      path: "/admin/attendance/department",
+      path: "/absent-nomesscut-report",
     },
     {
       text: "Absentees Report",
       icon: <Summarize />, // ✅ report/summary style icon
-      path: "/admin/attendance/summary",
-    },
-    {
-      text: "Absent SMS",
-      icon: <Sms />, // ✅ for sending text messages
-      path: "/admin/attendance/sms",
+      path: "/absentees-report",
     },
     {
       text: "Absent Comparison",
       icon: <CompareArrows />, // ✅ comparison symbol
-      path: "/admin/attendance/comparison",
+      path: "/attendance-comparison",
     },
   ],
 },

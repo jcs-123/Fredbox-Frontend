@@ -548,25 +548,7 @@ const UserForm = () => {
                  
                 </Grid>
 
-                <Box mt={3} display="flex" gap={2} flexWrap="wrap">
-              
-                  <Button
-                    variant="outlined"
-                    startIcon={<ReceiptIcon />}
-                    sx={{
-                      borderColor: "#00bfa6",
-                      color: "#00bfa6",
-                      textTransform: "none",
-                      fontWeight: 500,
-                      "&:hover": {
-                        bgcolor: "#00bfa6",
-                        color: "white",
-                      },
-                    }}
-                  >
-                    Download Payment History
-                  </Button>
-                </Box>
+             
               </Paper>
             </motion.div>
           </Grid>

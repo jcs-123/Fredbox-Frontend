@@ -93,7 +93,7 @@ const ComplaintDetails = () => {
           variant="h4"
           sx={{
             fontWeight: 700,
-            color: "#1a237e",
+            color: "#0889f3ff",
             textAlign: "center",
             mb: 1,
           }}
