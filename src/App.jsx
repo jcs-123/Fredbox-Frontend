@@ -14,6 +14,7 @@ import HolidaySelect from './Pages/HolidaySelect';
 import DateSelect from './Pages/DateSelect';
 import ComplaintDetails from './Pages/ComplaintDetails';
 import StudentDetails from './Pages/StudentDetails';
+import UserForm from './Pages/UserForm';
 
 
 function App() {
@@ -42,6 +43,8 @@ function App() {
 
 
         </Route>
+                <Route path='/userform' element={<UserForm/>}/>
+
       </Routes>
     </>
   );
