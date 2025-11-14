@@ -1,220 +1,366 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Modal,
-  Box,
-  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  Button,
-  IconButton,
   Chip,
-  Paper,
+  Typography,
+  Box,
+  Card,
+  CardContent,
+  Grid,
+  useTheme,
+  useMediaQuery,
+  Fade,
+  Slide,
+  Avatar,
+  Divider,
+  IconButton,
+  Collapse
 } from "@mui/material";
-import { motion } from "framer-motion";
-import CloseIcon from "@mui/icons-material/Close";
+import {
+  ExpandMore,
+  CalendarToday,
+  Schedule,
+  Assignment,
+  Close
+} from "@mui/icons-material";
+import axios from "axios";
 
 const StudentViewRequestModal = ({ open, handleClose }) => {
-  // 🔹 Dummy Data (replace later with API)
-  const requests = [
-    {
-      roomNo: "319",
-      name: "ADITYARAJ S",
-      admissionNo: "12312019",
-      leavingDate: "2025-10-17",
-      leavingTime: "06:58:00",
-      returningDate: "2026-01-01",
-      returningTime: "16:00:00",
-      reason: "College bus",
-      status: "APPROVED",
-      remarks: "",
-      messCut: "",
-    },
-    {
-      roomNo: "319",
-      name: "ADITYARAJ S",
-      admissionNo: "12312019",
-      leavingDate: "2025-09-20",
-      leavingTime: "06:34:00",
-      returningDate: "2025-10-06",
-      returningTime: "16:00:00",
-      reason: "College bus",
-      status: "APPROVED",
-      remarks: "",
-      messCut: "",
-    },
-    {
-      roomNo: "319",
-      name: "ADITYARAJ S",
-      admissionNo: "12312019",
-      leavingDate: "2025-08-28",
-      leavingTime: "06:00:00",
-      returningDate: "2025-09-15",
-      returningTime: "06:00:00",
-      reason: "Weekends",
-      status: "APPROVED",
-      remarks: "",
-      messCut: 18,
-    },
-    {
-      roomNo: "319",
-      name: "ADITYARAJ S",
-      admissionNo: "12312019",
-      leavingDate: "2025-10-10",
-      leavingTime: "06:02:00",
-      returningDate: "2025-12-01",
-      returningTime: "06:00:00",
-      reason: "Day scholar",
-      status: "REJECTED",
-      remarks: "",
-      messCut: "",
-    },
-  ];
+  const [requests, setRequests] = useState([]);
+  const [expandedRequest, setExpandedRequest] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  return (
-    <Modal open={open} onClose={handleClose} sx={{ zIndex: 1500 }}>
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "95%", md: "90%" },
-            maxHeight: "85vh",
-            overflow: "auto",
-            bgcolor: "#fff",
-            borderRadius: 3,
-            boxShadow: 24,
-            p: 3,
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-              borderBottom: "2px solid #00bfa6",
-              pb: 1,
-            }}
-          >
-            <Typography
-              variant="h6"
-              fontWeight={700}
-              sx={{ color: "#00bfa6", fontFamily: "Poppins, sans-serif" }}
-            >
-              STUDENT DETAILS
-            </Typography>
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
+  useEffect(() => {
+    if (open) {
+      const user = JSON.parse(localStorage.getItem("user"));
+      if (!user?.admissionNumber) return;
 
-          {/* Table Section */}
-          <Paper
-            elevation={2}
-            sx={{
-              overflowX: "auto",
-              borderRadius: 2,
-              "&::-webkit-scrollbar": { height: 8 },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: "#ccc",
-                borderRadius: 4,
-              },
-            }}
-          >
-            <Table size="small" sx={{ minWidth: 1100 }}>
-              <TableHead sx={{ bgcolor: "#f3f4f6" }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Room No</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Student Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Admission No</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Leaving Date</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Leaving Time</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Returning Date</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Returning Time</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Remarks</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Mess Cut Available</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {requests.map((req, index) => (
-                  <TableRow
-                    key={index}
-                    sx={{
-                      bgcolor: index % 2 === 0 ? "#f9fafb" : "#ffffff",
-                      "&:hover": { bgcolor: "#eefbf9" },
-                    }}
-                  >
-                    <TableCell>{req.roomNo}</TableCell>
-                    <TableCell>{req.name}</TableCell>
-                    <TableCell>{req.admissionNo}</TableCell>
-                    <TableCell>{req.leavingDate}</TableCell>
-                    <TableCell>{req.leavingTime}</TableCell>
-                    <TableCell>{req.returningDate}</TableCell>
-                    <TableCell>{req.returningTime}</TableCell>
-                    <TableCell>{req.reason}</TableCell>
-                    <TableCell>
-                      {req.status === "APPROVED" ? (
-                        <Chip
-                          label="APPROVED"
-                          color="success"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      ) : req.status === "REJECTED" ? (
-                        <Chip
-                          label="REJECTED"
-                          color="error"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      ) : (
-                        <Chip
-                          label={req.status}
-                          color="warning"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>{req.remarks || "-"}</TableCell>
-                    <TableCell>{req.messCut || "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+      axios
+        .get("http://localhost:4000/student", {
+          params: { admissionNo: user.admissionNumber },
+        })
+        .then((res) => setRequests(res.data.data))
+        .catch((err) => console.error("Error fetching:", err));
+    } else {
+      setExpandedRequest(null);
+    }
+  }, [open]);
 
-          {/* Footer Button */}
-          <Box textAlign="center" mt={3}>
-            <Button
-              variant="contained"
-              onClick={handleClose}
-              sx={{
-                bgcolor: "#00bfa6",
-                "&:hover": { bgcolor: "#009e8d" },
-                fontWeight: 600,
-                px: 4,
-                borderRadius: 2,
+  const getChip = (status) => {
+    const chipProps = {
+      size: isMobile ? "small" : "medium",
+      sx: { 
+        fontWeight: 600,
+        borderRadius: 2,
+        minWidth: 80
+      }
+    };
+
+    if (status === "ACCEPT") return <Chip color="success" label="ACCEPT" {...chipProps} />;
+    if (status === "REJECT") return <Chip color="error" label="REJECT" {...chipProps} />;
+    return <Chip color="warning" label="Pending" {...chipProps} />;
+  };
+
+  const getStatusColor = (status) => {
+    if (status === "ACCEPT") return theme.palette.success.main;
+    if (status === "REJECT") return theme.palette.error.main;
+    return theme.palette.warning.main;
+  };
+
+  const handleExpandClick = (requestId) => {
+    setExpandedRequest(expandedRequest === requestId ? null : requestId);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Desktop Table View
+  const renderDesktopView = () => (
+    <Fade in timeout={500}>
+      <Table sx={{ 
+        minWidth: 650,
+        '& .MuiTableCell-root': {
+          py: 2,
+          borderBottom: `1px solid ${theme.palette.divider}`
+        }
+      }}>
+        <TableHead>
+          <TableRow sx={{ backgroundColor: theme.palette.background.default }}>
+            <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Leaving</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Returning</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {requests.map((r) => (
+            <TableRow 
+              key={r._id}
+              sx={{ 
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[1]
+                }
               }}
             >
-              CLOSE
-            </Button>
-          </Box>
+              <TableCell>{formatDate(r.createdAt)}</TableCell>
+              <TableCell>{r.leavingDate} ({r.leavingTime})</TableCell>
+              <TableCell>{r.returningDate} ({r.returningTime})</TableCell>
+              <TableCell sx={{ maxWidth: 200 }}>
+                <Typography 
+                  variant="body2" 
+                  noWrap 
+                  title={r.reason}
+                >
+                  {r.reason}
+                </Typography>
+              </TableCell>
+              <TableCell>{getChip(r.status)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Fade>
+  );
+
+  // Mobile Card View
+  const renderMobileView = () => (
+    <Box sx={{ mt: 1 }}>
+      {requests.map((r, index) => (
+        <Slide 
+          key={r._id} 
+          in 
+          timeout={500} 
+          direction="up"
+          style={{ transitionDelay: `${index * 100}ms` }}
+        >
+          <Card 
+            sx={{ 
+              mb: 2,
+              borderRadius: 3,
+              boxShadow: theme.shadows[2],
+              borderLeft: `4px solid ${getStatusColor(r.status)}`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: theme.shadows[4],
+                transform: 'translateY(-2px)'
+              }
+            }}
+          >
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              {/* Header */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar 
+                    sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      bgcolor: getStatusColor(r.status),
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {r.status.charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {formatDate(r.createdAt)}
+                    </Typography>
+                    {getChip(r.status)}
+                  </Box>
+                </Box>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleExpandClick(r._id)}
+                  sx={{
+                    transform: expandedRequest === r._id ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease'
+                  }}
+                >
+                  <ExpandMore />
+                </IconButton>
+              </Box>
+
+              {/* Basic Info */}
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarToday sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography variant="caption" fontWeight={500}>
+                      Leave: {r.leavingDate}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Schedule sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography variant="caption" fontWeight={500}>
+                      {r.leavingTime}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={1} sx={{ mb: 1 }}>
+                <Grid item xs={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarToday sx={{ fontSize: 16, color: 'secondary.main' }} />
+                    <Typography variant="caption" fontWeight={500}>
+                      Return: {r.returningDate}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Schedule sx={{ fontSize: 16, color: 'secondary.main' }} />
+                    <Typography variant="caption" fontWeight={500}>
+                      {r.returningTime}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              {/* Expandable Details */}
+              <Collapse in={expandedRequest === r._id} timeout="auto">
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                  <Assignment sx={{ fontSize: 16, color: 'text.secondary', mt: 0.25 }} />
+                  <Box>
+                    <Typography variant="caption" fontWeight={600} color="text.secondary">
+                      REASON:
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {r.reason}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Collapse>
+
+              {/* Quick Reason Preview */}
+              {expandedRequest !== r._id && (
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    mt: 1,
+                    color: 'text.secondary',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {r.reason}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Slide>
+      ))}
+    </Box>
+  );
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      fullWidth 
+      maxWidth="md"
+      fullScreen={isMobile}
+      TransitionComponent={Slide}
+      transitionDuration={400}
+      PaperProps={{
+        sx: {
+          borderRadius: isMobile ? 0 : 2,
+          background: isMobile 
+            ? theme.palette.background.default 
+            : `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+          minHeight: isMobile ? '100vh' : 'auto'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        pb: 1,
+        background: `linear-gradient(135deg, ${theme.palette.primary.main}20, ${theme.palette.secondary.main}20)`,
+        borderBottom: `1px solid ${theme.palette.divider}`
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h5" component="h2" fontWeight={700}>
+            My Mess Cut Requests
+          </Typography>
+          {isMobile && (
+            <IconButton onClick={handleClose} size="large">
+              <Close />
+            </IconButton>
+          )}
         </Box>
-      </motion.div>
-    </Modal>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {requests.length} request{requests.length !== 1 ? 's' : ''} found
+        </Typography>
+      </DialogTitle>
+
+      <DialogContent sx={{ 
+        p: isMobile ? 2 : 3,
+        maxHeight: isMobile ? 'none' : '70vh',
+        overflow: 'auto'
+      }}>
+        {requests.length === 0 ? (
+          <Fade in timeout={600}>
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              color: 'text.secondary'
+            }}>
+              <Typography variant="h6" gutterBottom>
+                No requests found
+              </Typography>
+              <Typography variant="body2">
+                You haven't submitted any mess cut requests yet.
+              </Typography>
+            </Box>
+          </Fade>
+        ) : (
+          isMobile ? renderMobileView() : renderDesktopView()
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ 
+        p: 3,
+        borderTop: `1px solid ${theme.palette.divider}`,
+        background: theme.palette.background.default
+      }}>
+        <Button 
+          onClick={handleClose}
+          variant={isMobile ? "contained" : "outlined"}
+          fullWidth={isMobile}
+          size={isMobile ? "large" : "medium"}
+          sx={{
+            borderRadius: 2,
+            fontWeight: 600,
+            py: isMobile ? 1.5 : 1
+          }}
+        >
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

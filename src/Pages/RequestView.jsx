@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -17,13 +17,8 @@ import {
   CardContent,
   useTheme,
   useMediaQuery,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  CircularProgress,
   IconButton,
-  Menu,
-  MenuItem,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import {
@@ -33,161 +28,222 @@ import {
   Cancel,
   Visibility,
 } from "@mui/icons-material";
+import axios from "axios";
+import { toast, ToastContainer, Slide } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-/* 🔹 Dummy Data */
-const dummyRequests = [
-  {
-    id: 1,
-    room: "15",
-    name: "ALFRED GEORGE",
-    admn: "JEC856",
-    sem: "S00",
-    class: "Teacher",
-    applyDate: "2025-10-16",
-    applyTime: "04:18:00",
-    leavingDate: "2025-10-18",
-    leavingTime: "06:00:00",
-    returnDate: "2025-10-21",
-    returnTime: "06:00:00",
-    reason: "Going Home",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    room: "233",
-    name: "EDWIN PAUL",
-    admn: "12213015",
-    sem: "S7",
-    class: "EEE",
-    applyDate: "2025-10-17",
-    applyTime: "08:36:45",
-    leavingDate: "2025-10-18",
-    leavingTime: "06:00:00",
-    returnDate: "2025-10-21",
-    returnTime: "06:00:00",
-    reason: "Holiday",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    room: "516",
-    name: "LINS A T",
-    admn: "12423045",
-    sem: "S5",
-    class: "EEE",
-    applyDate: "2025-10-17",
-    applyTime: "10:10:13",
-    leavingDate: "2025-10-18",
-    leavingTime: "17:00:00",
-    returnDate: "2025-10-21",
-    returnTime: "06:00:00",
-    reason: "Weekend home going",
-    status: "Pending",
-  },
-];
-
-/* 🔹 Component */
 function RequestView() {
+  const [requests, setRequests] = useState([]);
   const [search, setSearch] = useState("");
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [detailDialog, setDetailDialog] = useState(false);
-  const [actionMenu, setActionMenu] = useState({ anchor: null, requestId: null });
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
+  const API_URL = "http://localhost:4000"; // 🔧 backend base URL
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // up to 600px
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const filtered = dummyRequests.filter(
+  /* =========================================
+     🟩 Toast Config
+  ========================================= */
+  const toastConfig = {
+    position: "top-center",
+    autoClose: 1000,
+    hideProgressBar: false,
+    theme: "colored",
+    transition: Slide,
+  };
+
+  /* =========================================
+     🟩 Fetch Requests (Only Pending)
+  ========================================= */
+useEffect(() => {
+  let mounted = true; // ✅ Prevent duplicate calls in React Strict Mode
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/all`);
+      if (mounted && res.data.success) {
+        // ✅ Filter only pending requests
+        const pending = (res.data.data || []).filter(
+          (r) => r.status === "Pending"
+        );
+        setRequests(pending);
+
+        // ✅ Clear previous toasts before showing new one
+        toast.dismiss();
+
+        if (pending.length > 0) {
+          toast.info(`📦 Loaded ${pending.length} pending requests`, {
+            ...toastConfig,
+            style: {
+              background: "linear-gradient(135deg, #1565C0, #42A5F5)",
+              color: "#fff",
+              fontWeight: 600,
+            },
+          });
+        } else {
+          toast.warning("✅ No pending requests found", {
+            ...toastConfig,
+            style: {
+              background: "linear-gradient(135deg, #546E7A, #90A4AE)",
+              color: "#fff",
+              fontWeight: 600,
+            },
+          });
+        }
+      } else if (mounted) {
+        toast.dismiss();
+        toast.error("❌ Failed to load requests", toastConfig);
+      }
+    } catch (err) {
+      if (mounted) {
+        console.error("❌ Fetch Error:", err);
+        toast.dismiss();
+        toast.error("🚨 Server connection error", toastConfig);
+      }
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
+
+  fetchRequests();
+
+  // ✅ Cleanup to prevent duplicate side-effects on remount
+  return () => {
+    mounted = false;
+    toast.dismiss(); // optional: clear any lingering toast on unmount
+  };
+}, []);
+
+
+  /* =========================================
+     🟩 Update Status (Accept/Reject)
+  ========================================= */
+  const handleAction = async (id, newStatus) => {
+    try {
+      setActionLoading(true);
+      const res = await axios.put(`${API_URL}/status/${id}`, {
+        status: newStatus,
+        updatedBy: "Admin",
+      });
+
+      if (res.data.success) {
+        // Remove the updated request from pending list
+        setRequests((prev) => prev.filter((r) => r._id !== id));
+
+        toast.success(
+          newStatus === "ACCEPT"
+            ? "✅ Request Approved Successfully!"
+            : "❌ Request Rejected!",
+          {
+            ...toastConfig,
+            style: {
+              background:
+                newStatus === "ACCEPT"
+                  ? "linear-gradient(135deg, #1B5E20, #4CAF50)"
+                  : "linear-gradient(135deg, #B71C1C, #E53935)",
+              color: "#fff",
+              fontWeight: 600,
+            },
+          }
+        );
+      } else {
+        toast.warning("⚠️ Could not update status", toastConfig);
+      }
+    } catch (err) {
+      console.error("❌ Update Error:", err);
+      toast.error("💥 Server Error! Try again later.", {
+        ...toastConfig,
+        style: {
+          background: "linear-gradient(135deg, #880E4F, #C2185B)",
+          color: "#fff",
+          fontWeight: 600,
+        },
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* =========================================
+     🟩 Filtered by Search
+  ========================================= */
+  const filtered = requests.filter(
     (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.admn.toLowerCase().includes(search.toLowerCase()) ||
-      r.room.toLowerCase().includes(search.toLowerCase())
+      r.name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.admissionNo?.toLowerCase().includes(search.toLowerCase()) ||
+      r.roomNo?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAction = (id, newStatus) => {
-    alert(`Request ID ${id} marked as ${newStatus}`);
-    setActionMenu({ anchor: null, requestId: null });
-  };
-
-  const handleViewDetails = (request) => {
-    setSelectedRequest(request);
-    setDetailDialog(true);
-  };
-
-  const handleOpenMenu = (event, requestId) => {
-    setActionMenu({ anchor: event.currentTarget, requestId });
-  };
-
-  const handleCloseMenu = () => {
-    setActionMenu({ anchor: null, requestId: null });
-  };
-
-  /* 🔸 Mobile Card */
+  /* =========================================
+     🟩 Mobile Card View
+  ========================================= */
   const MobileCard = ({ request }) => (
     <Card
+      component={motion.div}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       sx={{
         mb: 2,
         borderRadius: 2,
-        boxShadow: "0 3px 12px rgba(0,0,0,0.05)",
-        overflow: "hidden",
+        boxShadow: "0 3px 10px rgba(0,0,0,0.05)",
       }}
     >
       <CardContent sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-          <Box>
-            <Typography variant="subtitle1" fontWeight={600} sx={{ fontSize: "0.95rem" }}>
-              {request.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
-              Room {request.room} • {request.admn}
-            </Typography>
-          </Box>
-          <Chip
-            label={request.status}
-            color={
-              request.status === "Pending"
-                ? "warning"
-                : request.status === "Accepted"
-                ? "success"
-                : "error"
-            }
-            size="small"
-          />
-        </Box>
-
-        <Typography variant="body2" sx={{ mb: 1, fontSize: "0.8rem" }}>
-          <strong>Leave:</strong> {request.leavingDate} → {request.returnDate}
+        <Typography variant="subtitle1" fontWeight={600}>
+          {request.name}
         </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mb: 1, fontSize: "0.8rem" }}
-        >
+        <Typography variant="body2" color="text.secondary">
+          Room {request.roomNo} • {request.admissionNo}
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          <strong>Leave:</strong> {request.leavingDate} →{" "}
+          {request.returningDate}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           <strong>Reason:</strong> {request.reason}
         </Typography>
 
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Button
-            size="small"
-            startIcon={<Visibility fontSize="small" />}
-            onClick={() => handleViewDetails(request)}
-            sx={{
-              textTransform: "none",
-              fontSize: "0.75rem",
-              px: 1.5,
-              color: "primary.main",
-            }}
-          >
-            View
-          </Button>
-
-          <IconButton size="small" onClick={(e) => handleOpenMenu(e, request.id)}>
-            <MoreVert fontSize="small" />
-          </IconButton>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: 1.5,
+          }}
+        >
+          <Chip label="Pending" color="warning" size="small" />
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              size="small"
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircle />}
+              disabled={actionLoading}
+              onClick={() => handleAction(request._id, "ACCEPT")}
+            >
+              Accept
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              startIcon={<Cancel />}
+              disabled={actionLoading}
+              onClick={() => handleAction(request._id, "REJECT")}
+            >
+              Reject
+            </Button>
+          </Box>
         </Box>
       </CardContent>
     </Card>
   );
 
+  /* =========================================
+     🟩 Main Render
+  ========================================= */
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
       <Box
@@ -198,6 +254,21 @@ function RequestView() {
           fontFamily: "Poppins, sans-serif",
         }}
       >
+        <ToastContainer
+          position="top-center"
+          autoClose={2500}
+          hideProgressBar={false}
+          newestOnTop
+          theme="colored"
+          transition={Slide}
+          style={{
+            fontSize: "0.95rem",
+            fontFamily: "Poppins, sans-serif",
+            fontWeight: 500,
+            textAlign: "center",
+          }}
+        />
+
         {/* ===== Header ===== */}
         <Typography
           variant="h4"
@@ -211,7 +282,7 @@ function RequestView() {
             WebkitTextFillColor: "transparent",
           }}
         >
-          Student Requests
+          Pending Messcut Requests
         </Typography>
 
         {/* ===== Search ===== */}
@@ -236,19 +307,22 @@ function RequestView() {
           </Grid>
         </Grid>
 
-        {/* ===== Mobile View ===== */}
-        {isMobile ? (
-          <>
-            {filtered.length > 0 ? (
-              filtered.map((r) => <MobileCard key={r.id} request={r} />)
-            ) : (
-              <Paper sx={{ p: 4, textAlign: "center" }}>
-                <Typography color="text.secondary">No matching records found</Typography>
-              </Paper>
-            )}
-          </>
+        {/* ===== Content ===== */}
+        {loading ? (
+          <Box textAlign="center" py={8}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : isMobile ? (
+          filtered.length > 0 ? (
+            filtered.map((r) => <MobileCard key={r._id} request={r} />)
+          ) : (
+            <Paper sx={{ p: 4, textAlign: "center" }}>
+              <Typography color="text.secondary">
+                No pending requests found
+              </Typography>
+            </Paper>
+          )
         ) : (
-          /* ===== Desktop Table ===== */
           <Paper
             sx={{
               borderRadius: 3,
@@ -261,15 +335,14 @@ function RequestView() {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f0f4ff" }}>
                     {[
-                      "ID",
+                      "Sl.No",
                       "Room No",
                       "Student Name",
                       "Admission No",
-                      "Semester",
-                      "Class",
-                      "Apply Date",
                       "Leaving Date",
-                      "Return Date",
+                       "Leaving Time",
+                      "Returning Date",
+                             "Returning Time",
                       "Reason",
                       "Status",
                       "Action",
@@ -277,11 +350,7 @@ function RequestView() {
                       <TableCell
                         key={h}
                         align="center"
-                        sx={{
-                          fontWeight: "bold",
-                          fontSize: "0.85rem",
-                          whiteSpace: "nowrap",
-                        }}
+                        sx={{ fontWeight: "bold", fontSize: "0.85rem" }}
                       >
                         {h}
                       </TableCell>
@@ -292,34 +361,25 @@ function RequestView() {
                   {filtered.length > 0 ? (
                     filtered.map((row, index) => (
                       <TableRow
-                        key={row.id}
+                        key={row._id}
                         sx={{
                           backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
                           "&:hover": { backgroundColor: "#eef3fc" },
                         }}
                       >
-                        <TableCell align="center">{row.id}</TableCell>
-                        <TableCell align="center">{row.room}</TableCell>
+                        <TableCell align="center">{index + 1}</TableCell>
+                        <TableCell align="center">{row.roomNo}</TableCell>
                         <TableCell align="center">{row.name}</TableCell>
-                        <TableCell align="center">{row.admn}</TableCell>
-                        <TableCell align="center">{row.sem}</TableCell>
-                        <TableCell align="center">{row.class}</TableCell>
-                        <TableCell align="center">{row.applyDate}</TableCell>
+                        <TableCell align="center">{row.admissionNo}</TableCell>
                         <TableCell align="center">{row.leavingDate}</TableCell>
-                        <TableCell align="center">{row.returnDate}</TableCell>
+                                                <TableCell align="center">{row.leavingTime}</TableCell>
+
+                        <TableCell align="center">{row.returningDate}</TableCell>
+                                                <TableCell align="center">{row.returningTime}</TableCell>
+
                         <TableCell align="center">{row.reason}</TableCell>
                         <TableCell align="center">
-                          <Chip
-                            label={row.status}
-                            color={
-                              row.status === "Pending"
-                                ? "warning"
-                                : row.status === "Accepted"
-                                ? "success"
-                                : "error"
-                            }
-                            variant="outlined"
-                          />
+                          <Chip label="Pending" color="warning" variant="outlined" />
                         </TableCell>
                         <TableCell align="center">
                           <Box sx={{ display: "flex", justifyContent: "center", gap: 1 }}>
@@ -327,8 +387,9 @@ function RequestView() {
                               size="small"
                               variant="contained"
                               color="success"
+                              disabled={actionLoading}
                               startIcon={<CheckCircle />}
-                              onClick={() => handleAction(row.id, "Accepted")}
+                              onClick={() => handleAction(row._id, "ACCEPT")}
                             >
                               Accept
                             </Button>
@@ -336,8 +397,9 @@ function RequestView() {
                               size="small"
                               variant="outlined"
                               color="error"
+                              disabled={actionLoading}
                               startIcon={<Cancel />}
-                              onClick={() => handleAction(row.id, "Rejected")}
+                              onClick={() => handleAction(row._id, "REJECT")}
                             >
                               Reject
                             </Button>
@@ -347,9 +409,9 @@ function RequestView() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                         <Typography color="text.secondary">
-                          No matching records found
+                          No pending requests found
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -359,59 +421,6 @@ function RequestView() {
             </TableContainer>
           </Paper>
         )}
-
-        {/* ===== Detail Dialog ===== */}
-        <Dialog
-          open={detailDialog}
-          onClose={() => setDetailDialog(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>Request Details</DialogTitle>
-          <DialogContent>
-            {selectedRequest && (
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                {[
-                  ["Name", selectedRequest.name],
-                  ["Admission No", selectedRequest.admn],
-                  ["Room", selectedRequest.room],
-                  ["Class", selectedRequest.class],
-                  ["Reason", selectedRequest.reason],
-                  [
-                    "Leave Period",
-                    `${selectedRequest.leavingDate} ${selectedRequest.leavingTime} → ${selectedRequest.returnDate} ${selectedRequest.returnTime}`,
-                  ],
-                ].map(([label, value]) => (
-                  <Grid item xs={12} key={label}>
-                    <Typography variant="caption" color="text.secondary">
-                      {label}
-                    </Typography>
-                    <Typography variant="body1">{value}</Typography>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDetailDialog(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* ===== Action Menu ===== */}
-        <Menu
-          anchorEl={actionMenu.anchor}
-          open={Boolean(actionMenu.anchor)}
-          onClose={handleCloseMenu}
-        >
-          <MenuItem onClick={() => handleAction(actionMenu.requestId, "Accepted")}>
-            <CheckCircle sx={{ mr: 1, color: "success.main" }} />
-            Accept
-          </MenuItem>
-          <MenuItem onClick={() => handleAction(actionMenu.requestId, "Rejected")}>
-            <Cancel sx={{ mr: 1, color: "error.main" }} />
-            Reject
-          </MenuItem>
-        </Menu>
       </Box>
     </motion.div>
   );

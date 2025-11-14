@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -44,7 +45,11 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import StudentViewRequestModal from "../Components/StudentViewRequestModal";
 import ApologyViewModal from "../Components/ApologyViewModal";
-
+import { useNavigate } from "react-router-dom"
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import axios from "axios";
+import ComplaintViewModal from "../Components/ComplaintViewModal";
 const UserForm = () => {
   const [formData, setFormData] = useState({
     admissionNo: "",
@@ -57,12 +62,21 @@ const UserForm = () => {
     reason: "",
     complaint: "",
   });
-   const [openModal, setOpenModal] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   const [openApology, setOpenApology] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+const navigate = useNavigate();
+const [openComplaintView, setOpenComplaintView] = useState(false);
 
   // Sample payment data for all months
   const paymentData = [
@@ -85,10 +99,175 @@ const UserForm = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (section) => {
-    alert(`${section} submitted successfully!`);
-    console.log("Form Data:", formData);
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
+
+const handleMesscutSubmit = async () => {
+  try {
+    const res = await axios.post("http://localhost:4000/adddetail", formData);
+    if (res.data.success) {
+      toast.success("✅ Mess cut request submitted!");
+      setFormData((prev) => ({
+        ...prev,
+        leavingDate: "",
+        leavingTime: "",
+        returningDate: "",
+        returningTime: "",
+        reason: "",
+      }));
+    } else {
+      toast.error(res.data.message || "Submission failed!");
+    }
+  } catch (err) {
+    console.error("❌ Error submitting messcut:", err);
+    toast.error("Server error, please try again later.");
+  }
+};
+
+const handleComplaintSubmit = async () => {
+  try {
+    if (!formData.complaint.trim()) {
+      toast.warning("⚠️ Please enter your complaint before submitting!");
+      return;
+    }
+
+    const payload = {
+      name: formData.name,
+      admissionNo: formData.admissionNo,
+      roomNo: formData.roomNo,
+      complaint: formData.complaint,
+    };
+
+    const res = await axios.post("http://localhost:4000/add", payload);
+
+    if (res.data.success) {
+      toast.success("✅ Complaint submitted successfully!");
+      setFormData((prev) => ({ ...prev, complaint: "" }));
+    } else {
+      toast.error(res.data.message || "Failed to submit complaint.");
+    }
+  } catch (error) {
+    console.error("❌ Complaint submission error:", error);
+    toast.error("Server error while submitting complaint.");
+  }
+};
+
+const handlePasswordSubmit = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user?.admissionNumber) {
+      toast.error("❌ User session missing! Please log in again.", { theme: "colored" });
+      navigate("/login");
+      return;
+    }
+
+    // 🔹 Basic client-side validation
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("❌ New password and confirm password do not match!", { theme: "colored" });
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast.warning("⚠️ Password must be at least 6 characters long!", { theme: "colored" });
+      return;
+    }
+
+    // 🔹 Send to backend
+    const res = await axios.put("http://localhost:4000/update-password", {
+      admissionNumber: user.admissionNumber,
+      currentPassword: passwordData.currentPassword,
+      newPassword: passwordData.newPassword,
+      confirmPassword: passwordData.confirmPassword,
+    });
+
+    if (res.data.success) {
+      toast.success("✅ Password changed successfully!", { theme: "colored" });
+      console.log("Password Data:", passwordData);
+
+      // Optional: clear form
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      // Close modal after delay
+      setTimeout(() => {
+        setPasswordDialogOpen(false);
+      }, 1200);
+    } else {
+      toast.error(res.data.message || "⚠️ Password update failed.", { theme: "colored" });
+    }
+  } catch (err) {
+    console.error("❌ Password change error:", err);
+    toast.error(
+      err.response?.data?.message || "Server error. Please try again later.",
+      { theme: "colored" }
+    );
+  }
+};
+// 🔹 Fetch student details when page loads
+useEffect(() => {
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  if (!storedUser?.admissionNumber) {
+    toast.error("⚠️ User session expired. Please log in again.", { theme: "colored" });
+    navigate("/login");
+    return;
+  }
+
+  // ✅ Fetch fresh details from backend
+  axios
+    .get("http://localhost:4000/user", {
+      params: { admissionNumber: storedUser.admissionNumber },
+    })
+    .then((res) => {
+      if (res.data.success) {
+        const data = res.data.data;
+
+        setFormData((prev) => ({
+          ...prev,
+          admissionNo: data.admissionNumber || "",
+          name: data.name || "",
+          roomNo: data.roomNo || "",
+        }));
+
+        // Store updated user details if needed
+        localStorage.setItem("user", JSON.stringify(data));
+
+        // toast.success(`✅ Welcome ${data.name}`, { autoClose: 1000, theme: "colored" });
+        console.log("✅ User loaded:", data);
+      } else {
+        toast.error("❌ Unable to fetch user details.", { theme: "colored" });
+      }
+    })
+    .catch((err) => {
+      console.error("❌ Error fetching user:", err);
+      toast.error("Server error while fetching details.", { theme: "colored" });
+    });
+}, [navigate]);
+
+
+const handleLogout = () => {
+  // 1️⃣ Clear local storage
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+
+  // 2️⃣ Show toast
+  toast.success("✅ Logged out successfully!", {
+    position: "top-right",
+    autoClose: 2000,
+    theme: "colored",
+  });
+
+  console.log("User logged out and session cleared");
+
+  // 3️⃣ Redirect after short delay (so toast is visible)
+  setTimeout(() => {
+    navigate("/login");
+  }, 1500);
+};
+
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -100,6 +279,27 @@ const UserForm = () => {
 
   const handlePaymentDialogClose = () => {
     setPaymentDialogOpen(false);
+  };
+
+  const handlePasswordDialogOpen = () => {
+    setPasswordDialogOpen(true);
+  };
+
+  const handlePasswordDialogClose = () => {
+    setPasswordDialogOpen(false);
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
+
+  const handleLogoutDialogOpen = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const handleLogoutDialogClose = () => {
+    setLogoutDialogOpen(false);
   };
 
   const getStatusChip = (status) => {
@@ -114,11 +314,11 @@ const UserForm = () => {
         SIM Portal
       </Typography>
       <List>
-        <ListItem button>
+        <ListItem button onClick={handleLogoutDialogOpen}>
           <LogoutIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
           <ListItemText primary="Logout" />
         </ListItem>
-        <ListItem button>
+        <ListItem button onClick={handlePasswordDialogOpen}>
           <LockResetIcon sx={{ mr: 1, fontSize: "1.2rem" }} />
           <ListItemText primary="Change Password" />
         </ListItem>
@@ -178,6 +378,7 @@ const UserForm = () => {
             <Box display="flex" gap={3} alignItems="center">
               <Button
                 startIcon={<LockResetIcon />}
+                onClick={handlePasswordDialogOpen}
                 sx={{
                   color: "#64748b",
                   textTransform: "none",
@@ -192,6 +393,7 @@ const UserForm = () => {
               </Button>
               <Button
                 startIcon={<LogoutIcon />}
+                onClick={handleLogoutDialogOpen}
                 sx={{
                   color: "#64748b",
                   textTransform: "none",
@@ -241,9 +443,10 @@ const UserForm = () => {
             }}
           >
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Typography variant="h5" fontWeight={600} gutterBottom>
-                Welcome to Student Portal
-              </Typography>
+         <Typography variant="h5" fontWeight={600} gutterBottom>
+  Welcome, {formData.name || "Student"} 
+</Typography>
+
               <Typography variant="body1" sx={{ opacity: 0.9 }}>
                 Manage your mess cut permissions, complaints
               </Typography>
@@ -276,40 +479,61 @@ const UserForm = () => {
                   </Typography>
                 </Box>
                 
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="admissionNo"
-                      label="Admission No."
-                      fullWidth
-                      size="small"
-                      value={formData.admissionNo}
-                      onChange={handleChange}
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="roomNo"
-                      label="Room No."
-                      fullWidth
-                      size="small"
-                      value={formData.roomNo}
-                      onChange={handleChange}
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="name"
-                      label="Full Name"
-                      fullWidth
-                      size="small"
-                      value={formData.name}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                </Grid>
+<Grid
+  container
+  spacing={2}
+  sx={{
+    "& .MuiInputBase-root": {
+      backgroundColor: "white",
+      color: "black", // ✅ text color black
+      borderRadius: "8px",
+    },
+    "& .MuiInputLabel-root": {
+      color: "#475569", // subtle label color
+      fontWeight: 500,
+    },
+    "& .Mui-disabled": {
+      WebkitTextFillColor: "black", // ✅ force disabled text black
+      opacity: 1, // make it fully visible
+    },
+    "& .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#cbd5e1", // light gray border
+    },
+    "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#00bfa6", // mint green on hover
+    },
+  }}
+>
+  <Grid item xs={12}>
+    <TextField
+      label="Admission No."
+      value={formData.admissionNo}
+      fullWidth
+      size="small"
+      disabled
+    />
+  </Grid>
+  <Grid item xs={12}>
+    <TextField
+      label="Full Name"
+      value={formData.name}
+      fullWidth
+      size="small"
+      disabled
+    />
+  </Grid>
+  <Grid item xs={12}>
+    <TextField
+      label="Room No."
+      value={formData.roomNo}
+      fullWidth
+      size="small"
+      disabled
+    />
+  </Grid>
+</Grid>
+
+
               </Paper>
             </motion.div>
           </Grid>
@@ -395,8 +619,8 @@ const UserForm = () => {
                       onChange={handleChange}
                     >
                       <MenuItem value="">Select Time</MenuItem>
-                      <MenuItem value="Morning">Morning</MenuItem>
-                      <MenuItem value="Evening">Evening</MenuItem>
+                      <MenuItem value="Morning (6AM TO 8AM)">Morning(6AM TO 8AM)</MenuItem>
+                      <MenuItem value="Evening (4PM TO 6PM)">Evening(4PM TO 6PM)</MenuItem>
                     </TextField>
                   </Grid>
                   <Grid item xs={12}>
@@ -414,62 +638,63 @@ const UserForm = () => {
                 </Grid>
 
                 <Box mt={4} display="flex" gap={2} flexWrap="wrap">
+                <Button
+  variant="contained"
+  sx={{
+    bgcolor: "#00bfa6",
+    textTransform: "none",
+    fontWeight: 600,
+    px: 3,
+    "&:hover": { bgcolor: "#009688" },
+  }}
+  onClick={handleMesscutSubmit}
+>
+  Submit Request
+</Button>
+
                   <Button
-                    variant="contained"
+                    variant="outlined"
                     sx={{
-                      bgcolor: "#00bfa6",
+                      borderColor: "#64748b",
+                      color: "#64748b",
                       textTransform: "none",
-                      fontWeight: 600,
-                      px: 3,
-                      "&:hover": { bgcolor: "#009688" },
+                      fontWeight: 500,
+                      "&:hover": {
+                        borderColor: "#00bfa6",
+                        color: "#00bfa6",
+                      },
                     }}
-                    onClick={() => handleSubmit("Mess Cut Permission")}
+                    onClick={() => setOpenModal(true)}
                   >
-                    Submit Request
+                    View Requests
                   </Button>
-                      <Button
-        variant="outlined"
-        sx={{
-          borderColor: "#64748b",
-          color: "#64748b",
-          textTransform: "none",
-          fontWeight: 500,
-          "&:hover": {
-            borderColor: "#00bfa6",
-            color: "#00bfa6",
-          },
-        }}
-        onClick={() => setOpenModal(true)} // ✅ Open modal on click
-      >
-        View Requests
-      </Button>
 
-      {/* ---------- Modal Component ---------- */}
-      <StudentViewRequestModal
-        open={openModal}
-        handleClose={() => setOpenModal(false)} // ✅ Close modal function
-      />
-                      <Button
-        variant="outlined"
-        sx={{
-          borderColor: "#64748b",
-          color: "#64748b",
-          textTransform: "none",
-          fontWeight: 500,
-          "&:hover": {
-            borderColor: "#00bfa6",
-            color: "#00bfa6",
-          },
-        }}
-        onClick={() => setOpenApology(true)} // ✅ open modal
-      >
-        Apology View
-      </Button>
+                  <StudentViewRequestModal
+                    open={openModal}
+                    handleClose={() => setOpenModal(false)}
+                  />
+                  
+                  <Button
+                    variant="outlined"
+                    sx={{
+                      borderColor: "#64748b",
+                      color: "#64748b",
+                      textTransform: "none",
+                      fontWeight: 500,
+                      "&:hover": {
+                        borderColor: "#00bfa6",
+                        color: "#00bfa6",
+                      },
+                    }}
+                    onClick={() => setOpenApology(true)}
+                  >
+                    Apology View
+                  </Button>
 
-      <ApologyViewModal
-        open={openApology}
-        handleClose={() => setOpenApology(false)}
-      />
+                  <ApologyViewModal
+                    open={openApology}
+                    handleClose={() => setOpenApology(false)}
+                  />
                 </Box>
               </Paper>
             </motion.div>
@@ -545,10 +770,7 @@ const UserForm = () => {
                       </CardContent>
                     </Card>
                   </Grid>
-                 
                 </Grid>
-
-             
               </Paper>
             </motion.div>
           </Grid>
@@ -589,34 +811,42 @@ const UserForm = () => {
                 />
 
                 <Box display="flex" gap={2} flexWrap="wrap">
-                  <Button
-                    variant="contained"
-                    sx={{
-                      bgcolor: "#00bfa6",
-                      textTransform: "none",
-                      fontWeight: 600,
-                      px: 3,
-                      "&:hover": { bgcolor: "#009688" },
-                    }}
-                    onClick={() => handleSubmit("Complaint")}
-                  >
-                    Submit Complaint
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    sx={{
-                      borderColor: "#64748b",
-                      color: "#64748b",
-                      textTransform: "none",
-                      fontWeight: 500,
-                      "&:hover": {
-                        borderColor: "#00bfa6",
-                        color: "#00bfa6",
-                      },
-                    }}
-                  >
-                    View Complaints
-                  </Button>
+                <Button
+  variant="contained"
+  sx={{
+    bgcolor: "#00bfa6",
+    textTransform: "none",
+    fontWeight: 600,
+    px: 3,
+    "&:hover": { bgcolor: "#009688" },
+  }}
+  onClick={handleComplaintSubmit}
+>
+  Submit Complaint
+</Button>
+
+              <Button
+  variant="outlined"
+  sx={{
+    borderColor: "#64748b",
+    color: "#64748b",
+    textTransform: "none",
+    fontWeight: 500,
+    "&:hover": {
+      borderColor: "#00bfa6",
+      color: "#00bfa6",
+    },
+  }}
+  onClick={() => setOpenComplaintView(true)}
+>
+  View Complaints
+</Button>
+
+<ComplaintViewModal
+  open={openComplaintView}
+  handleClose={() => setOpenComplaintView(false)}
+/>
+
                 </Box>
               </Paper>
             </motion.div>
@@ -712,38 +942,210 @@ const UserForm = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ---------- Full Width Footer ---------- */}
-      <Box
-        component="footer"
-        sx={{
-          bgcolor: "#1e293b",
-          color: "white",
-          py: 4,
-          width: '100%',
-          mt: 'auto',
-        }}
+      {/* Change Password Dialog */}
+      <Dialog
+        open={passwordDialogOpen}
+        onClose={handlePasswordDialogClose}
+        maxWidth="sm"
+        fullWidth
       >
-        <Container maxWidth="lg">
-     
-          
-          <Box 
-            sx={{ 
-              borderTop: '1px solid #374151', 
-              mt: 4, 
-              pt: 3, 
-              textAlign: 'center',
-              opacity: 0.7
-            }}
-          >
-            <Typography variant="body2">
-              © 2025 All Rights Reserved By JCS@JEC | Student Information Management System
-            </Typography>
-            <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.6 }}>
-              Version 2.1.0 | Last updated: October 2025
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <LockResetIcon sx={{ color: "#00bfa6", mr: 1 }} />
+            <Typography variant="h6" fontWeight={600}>
+              Change Password
             </Typography>
           </Box>
-        </Container>
-      </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              name="currentPassword"
+              label="Current Password"
+              type="password"
+              fullWidth
+              value={passwordData.currentPassword}
+              onChange={handlePasswordChange}
+              sx={{ mb: 3 }}
+            />
+            <TextField
+              name="newPassword"
+              label="New Password"
+              type="password"
+              fullWidth
+              value={passwordData.newPassword}
+              onChange={handlePasswordChange}
+              sx={{ mb: 3 }}
+              helperText="Password must be at least 6 characters long"
+            />
+            <TextField
+              name="confirmPassword"
+              label="Confirm New Password"
+              type="password"
+              fullWidth
+              value={passwordData.confirmPassword}
+              onChange={handlePasswordChange}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handlePasswordDialogClose}
+            sx={{ 
+              textTransform: "none",
+              color: "#64748b"
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handlePasswordSubmit}
+            variant="contained"
+            sx={{
+              bgcolor: "#00bfa6",
+              textTransform: "none",
+              fontWeight: 600,
+              "&:hover": { bgcolor: "#009688" },
+            }}
+          >
+            Change Password
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog
+        open={logoutDialogOpen}
+        onClose={handleLogoutDialogClose}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <LogoutIcon sx={{ color: "#ef4444", mr: 1 }} />
+            <Typography variant="h6" fontWeight={600}>
+              Confirm Logout
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to logout from your account?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleLogoutDialogClose}
+            sx={{ 
+              textTransform: "none",
+              color: "#64748b"
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleLogout}
+            variant="contained"
+            sx={{
+              bgcolor: "#ef4444",
+              textTransform: "none",
+              fontWeight: 600,
+              "&:hover": { bgcolor: "#dc2626" },
+            }}
+          >
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ---------- Full Width Footer ---------- */}
+          <Box
+      component="footer"
+      sx={{
+        bgcolor: "#000000", // pure black background
+        color: "white",
+        width: "100%",
+        mt: "auto",
+        pt: { xs: 5, md: 6 },
+        pb: { xs: 4, md: 5 },
+        boxShadow: "0 -2px 10px rgba(0,0,0,0.4)",
+        borderTop: "2px solid #00bfa6",
+      }}
+    >
+      <Container maxWidth="lg">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          {/* 🔹 Main Title & Description */}
+          <Box textAlign="center" sx={{ mb: 3, px: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                background:
+                  "linear-gradient(90deg, #00bfa6 0%, #00acc1 50%, #00bfa6 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              JCS@JECC
+            </Typography>
+
+            <Typography
+              variant="body2"
+              sx={{
+                color: "#f1f5f9",
+                maxWidth: 700,
+                mx: "auto",
+                mt: 1,
+                fontSize: "0.95rem",
+                lineHeight: 1.6,
+              }}
+            >
+              Student Information Management System (SIM Portal) — developed to
+              simplify and unify student, hostel, and mess data management at{" "}
+              <Box component="span" sx={{ fontWeight: 600, color: "#00bfa6" }}>
+                Jyothi Engineering College
+              </Box>
+              .
+            </Typography>
+          </Box>
+
+          {/* 🔹 Divider */}
+          <Divider
+            sx={{
+              borderColor: "rgba(255,255,255,0.15)",
+              width: "60%",
+              mx: "auto",
+              my: 3,
+            }}
+          />
+
+          {/* 🔹 Footer Bottom Text */}
+          <Box textAlign="center" sx={{ opacity: 0.9 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 500,
+                color: "white",
+                letterSpacing: 0.2,
+              }}
+            >
+              © {new Date().getFullYear()} All Rights Reserved —{" "}
+              <Box component="span" sx={{ color: "#00bfa6", fontWeight: 600 }}>
+                JCS@JECC
+              </Box>{" "}
+              | Student Information Management System
+            </Typography>
+          </Box>
+        </motion.div>
+      </Container>
+    </Box>
+      <ToastContainer position="top-right" autoClose={1000} />
+
     </Box>
   );
 };

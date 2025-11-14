@@ -192,6 +192,7 @@ const AttendanceComparisonReport = () => {
               </tbody>
             </table>
           </div>
+          
         </Paper>
       )}
     </Box>

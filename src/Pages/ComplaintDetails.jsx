@@ -1,294 +1,352 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  TextField,
+  Container,
   Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  TableContainer,
-  TablePagination,
-  InputAdornment,
-  Chip,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import { motion, AnimatePresence } from "framer-motion";
+  Button,
+  Form,
+  Row,
+  Col,
+  Spinner,
+  Modal,
+  Badge,
+  Card,
+  Dropdown,
+} from "react-bootstrap";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import { motion } from "framer-motion";
+import "react-toastify/dist/ReactToastify.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const ComplaintDetails = () => {
-  const [complaints, setComplaints] = useState([
-    {
-      id: 1,
-      name: "Alfred George",
-      admissionNo: "JEC2025123",
-      roomNo: "B12",
-      message: "Fan not working in room",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      name: "Neeraj Babu",
-      admissionNo: "JEC2025150",
-      roomNo: "A10",
-      message: "Wi-Fi disconnected since morning",
-      status: "In Progress",
-    },
-    {
-      id: 3,
-      name: "Sarah Johnson",
-      admissionNo: "JEC2025189",
-      roomNo: "C05",
-      message: "Water leakage in bathroom",
-      status: "Resolved",
-    },
-  ]);
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showRemark, setShowRemark] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [remark, setRemark] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const toastConfig = { position: "top-center", autoClose: 2500, theme: "colored" };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // 🟢 Fetch Complaints
+  const fetchComplaints = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/allcomplaint/all`);
+      if (res.data.success) setComplaints(res.data.data || []);
+      else toast.error("Failed to load complaints", toastConfig);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      toast.error("Server error fetching complaints", toastConfig);
+    } finally {
+      setLoading(false);
+    }
   };
+  useEffect(() => { fetchComplaints(); }, []);
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(+event.target.value);
-    setPage(0);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Resolved": return "success";
-      case "In Progress": return "warning";
-      case "Pending": return "error";
-      default: return "default";
+  // 🔸 Update Status
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      setLoading(true);
+      const res = await axios.put(`${API_URL}/api/complaint/update/${id}`, { status: newStatus });
+      if (res.data.success) {
+        toast.success(`Status updated to ${newStatus}`, toastConfig);
+        fetchComplaints();
+      } else toast.error("Failed to update status", toastConfig);
+    } catch (err) {
+      console.error("Update error:", err);
+      toast.error("Server error updating status", toastConfig);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredData = complaints.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.admissionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.roomNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.message.toLowerCase().includes(searchQuery.toLowerCase())
+  // 📝 Add / Edit Remark
+  const handleRemarkSubmit = async () => {
+    if (!remark.trim()) return toast.warning("Please enter a remark", toastConfig);
+    if (!selectedComplaint?._id) return toast.error("No complaint selected", toastConfig);
+    try {
+      setLoading(true);
+      const res = await axios.put(
+        `${API_URL}/api/complaint/update/${selectedComplaint._id}`,
+        { remark }
+      );
+      if (res.data.success) {
+        toast.success("Remark added successfully", toastConfig);
+        setShowRemark(false);
+        setRemark("");
+        fetchComplaints();
+      } else toast.error("Failed to add remark", toastConfig);
+    } catch (err) {
+      console.error("Remark error:", err);
+      toast.error("Server error adding remark", toastConfig);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🎨 Status Colors
+  const getBadgeVariant = (status) => {
+    switch (status) {
+      case "Pending": return "secondary";
+      case "In Progress": return "warning";
+      case "Resolved": return "success";
+      case "Rejected": return "danger";
+      default: return "light";
+    }
+  };
+
+  // 🔄 Filter + Sort
+  const filtered = complaints
+    .filter((c) => {
+      const text = search.toLowerCase();
+      const match =
+        c.name?.toLowerCase().includes(text) ||
+        c.roomNo?.toLowerCase().includes(text) ||
+        c.complaint?.toLowerCase().includes(text) ||
+        c.admissionNo?.toLowerCase().includes(text);
+      const statusMatch = statusFilter === "all" || c.status === statusFilter;
+      return match && statusMatch;
+    })
+    .sort((a, b) => {
+      if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
+      if (sortBy === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sortBy === "status") return a.status.localeCompare(b.status);
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      return 0;
+    });
+
+  // 📱 Mobile Card Layout
+  const ComplaintCard = ({ c }) => (
+    <Card className="mb-3 shadow-sm border-0">
+      <Card.Header
+        className="text-white fw-bold"
+        style={{ background: "#1565C0", border: "none" }}
+      >
+        <div className="d-flex justify-content-between align-items-center">
+          <span>{c.name}</span>
+          <Badge bg={getBadgeVariant(c.status)}>{c.status}</Badge>
+        </div>
+      </Card.Header>
+      <Card.Body>
+        <p><strong>Admission No:</strong> {c.admissionNo}</p>
+        <p><strong>Room:</strong> {c.roomNo}</p>
+        <p><strong>Complaint:</strong> {c.complaint}</p>
+        {c.remark && (
+          <div className="p-2 bg-light border rounded">
+            <small className="text-muted fw-semibold">Remark: </small>{c.remark}
+          </div>
+        )}
+      </Card.Body>
+      <Card.Footer className="bg-white border-0">
+        <Dropdown drop="up" className="w-100">
+          <Dropdown.Toggle
+            variant="outline-dark"
+            size="sm"
+            className="w-100 fw-semibold action-btn"
+          >
+            Manage Complaint
+          </Dropdown.Toggle>
+          <Dropdown.Menu className="w-100">
+            <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "In Progress")} className="text-warning fw-semibold">
+              ⏳ In Progress
+            </Dropdown.Item>
+            <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "Resolved")} className="text-success fw-semibold">
+              ✅ Resolved
+            </Dropdown.Item>
+            <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "Rejected")} className="text-danger fw-semibold">
+              ❌ Rejected
+            </Dropdown.Item>
+            <Dropdown.Divider />
+            <Dropdown.Item
+              onClick={() => {
+                setSelectedComplaint(c);
+                setRemark(c.remark || "");
+                setShowRemark(true);
+              }}
+              className="text-primary fw-semibold"
+            >
+              💬 {c.remark ? "Edit Remark" : "Add Remark"}
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </Card.Footer>
+    </Card>
   );
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%)",
-        p: { xs: 2, md: 4 },
-      }}
-    >
+    <Container fluid className="py-4" style={{ background: "#f7f9fb", minHeight: "100vh" }}>
+      <ToastContainer limit={1} />
+
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            color: "#0889f3ff",
-            textAlign: "center",
-            mb: 1,
-          }}
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-4">
+        <h2
+          className="fw-bold text-white p-3 rounded-3 shadow"
+          style={{ background: "#1565C0", margin: "0 auto", maxWidth: 520 }}
         >
-          Complaint Details
-        </Typography>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#546e7a",
-            textAlign: "center",
-            mb: 4,
-          }}
-        >
-          View and manage hostel or student complaints
-        </Typography>
+          Complaint Management
+        </h2>
       </motion.div>
 
-      {/* Search and Table */}
-      <Paper
-        component={motion.div}
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        sx={{
-          p: 3,
-          borderRadius: 3,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-          background: "#fff",
-          border: "1px solid #e0e0e0",
-        }}
-      >
-        {/* Search */}
-        <TextField
-          placeholder="Search by name, admission no, room, or message..."
-          variant="outlined"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          fullWidth
-          sx={{ mb: 3 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: "#5c6bc0" }} />
-              </InputAdornment>
-            ),
-            sx: {
-              borderRadius: 2,
-              "&:hover fieldset": {
-                borderColor: "#5c6bc0",
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: "#5c6bc0",
-                borderWidth: 2,
-              },
-            }
-          }}
-        />
+      {/* Filters */}
+      <Row className="mb-4 g-3 justify-content-center">
+        <Col xs={12} md={6}>
+          <Form.Control
+            type="text"
+            placeholder="Search by name, room, or complaint..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-3 shadow-sm"
+          />
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-3 shadow-sm">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="status">Sort by Status</option>
+            <option value="name">Sort by Name</option>
+          </Form.Select>
+        </Col>
+        <Col xs={6} md={3}>
+          <Form.Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-3 shadow-sm">
+            <option value="all">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Rejected">Rejected</option>
+          </Form.Select>
+        </Col>
+      </Row>
 
-        {/* Table */}
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ 
-                background: "linear-gradient(135deg, #0c5fbdff, #0889f3ff)",
-                "& th": {
-                  color: "white",
-                  fontWeight: 600,
-                  fontSize: "0.95rem",
-                  borderBottom: "none",
-                }
-              }}>
-                <TableCell>ID</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Admission No</TableCell>
-                <TableCell>Room No</TableCell>
-                <TableCell>Message</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              <AnimatePresence>
-                {filteredData.length > 0 ? (
-                  filteredData
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row, index) => (
-                      <TableRow 
-                        key={row.id} 
-                        component={motion.tr}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                        hover
-                        sx={{ 
-                          '&:last-child td, &:last-child th': { border: 0 },
-                          '&:hover': {
-                            backgroundColor: '#f8f9ff',
-                            transform: 'scale(1.01)',
-                            transition: 'all 0.2s ease',
-                          }
-                        }}
-                      >
-                        <TableCell sx={{ fontWeight: 600, color: "#37474f" }}>
-                          #{row.id}
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="subtitle2" fontWeight="600">
-                            {row.name}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.admissionNo} 
-                            size="small" 
-                            variant="outlined"
-                            color="primary"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.roomNo} 
-                            size="small" 
-                            variant="filled"
-                            sx={{ 
-                              backgroundColor: '#e3f2fd',
-                              color: '#1565c0',
-                              fontWeight: 600
+      {/* Content */}
+      {isMobile ? (
+        <div className="px-2">
+          {loading ? (
+            <div className="text-center py-5"><Spinner animation="border" variant="dark" /></div>
+          ) : filtered.length > 0 ? (
+            filtered.map((c, i) => (
+              <motion.div key={c._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <ComplaintCard c={c} />
+              </motion.div>
+            ))
+          ) : (
+            <p className="text-center text-muted py-5">No complaints found</p>
+          )}
+        </div>
+      ) : (
+        <div className="table-responsive rounded-3 shadow-sm">
+          <Table bordered hover className="align-middle mb-0">
+            <thead style={{ background: "#f1f1f1" }}>
+              <tr>
+                <th className="py-3 text-black fw-bold text-center">Name</th>
+                <th className="py-3 text-black fw-bold text-center">Admission No</th>
+                <th className="py-3 text-black fw-bold text-center">Room No</th>
+                <th className="py-3 text-black fw-bold text-center">Complaint</th>
+                <th className="py-3 text-black fw-bold text-center">Status</th>
+                <th className="py-3 text-black fw-bold text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="6" className="text-center py-5"><Spinner animation="border" variant="dark" /></td></tr>
+              ) : filtered.length > 0 ? (
+                filtered.map((c, idx) => (
+                  <motion.tr
+                    key={c._id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}
+                  >
+                    <td className="text-center text-dark fw-semibold">{c.name}</td>
+                    <td className="text-center">{c.admissionNo}</td>
+                    <td className="text-center">{c.roomNo}</td>
+                    <td style={{ maxWidth: 350 }}>{c.complaint}</td>
+                    <td className="text-center"><Badge bg={getBadgeVariant(c.status)}>{c.status}</Badge></td>
+                    <td className="text-center">
+                      <Dropdown drop="up">
+                        <Dropdown.Toggle variant="outline-dark" size="sm" className="px-4 border-2 fw-semibold action-btn">
+                          Actions
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                          <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "In Progress")} className="text-warning fw-semibold">
+                            In Progress
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "Resolved")} className="text-success fw-semibold">
+                            Resolved
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={() => handleStatusUpdate(c._id, "Rejected")} className="text-danger fw-semibold">
+                            Rejected
+                          </Dropdown.Item>
+                          <Dropdown.Divider />
+                          <Dropdown.Item
+                            onClick={() => {
+                              setSelectedComplaint(c);
+                              setRemark(c.remark || "");
+                              setShowRemark(true);
                             }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}>
-                          <Typography variant="body2" noWrap title={row.message}>
-                            {row.message}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={row.status} 
-                            size="small"
-                            color={getStatusColor(row.status)}
-                            sx={{ 
-                              fontWeight: 600,
-                              minWidth: 100
-                            }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Typography 
-                          variant="h6" 
-                          color="textSecondary"
-                          sx={{ mb: 1 }}
-                        >
-                          No complaints found
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          Try adjusting your search criteria
-                        </Typography>
-                      </motion.div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </AnimatePresence>
-            </TableBody>
+                            className="text-primary fw-semibold"
+                          >
+                            {c.remark ? "Edit Remark" : "Add Remark"}
+                          </Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
+                <tr><td colSpan="6" className="text-center text-muted py-5">No complaints found</td></tr>
+              )}
+            </tbody>
           </Table>
-        </TableContainer>
+        </div>
+      )}
 
-        {/* Pagination */}
-        <TablePagination
-          component="div"
-          count={filteredData.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[5, 10, 25]}
-          sx={{
-            borderTop: '1px solid #e0e0e0',
-            mt: 2,
-            '& .MuiTablePagination-toolbar': {
-              padding: 2,
-            }
-          }}
-        />
-      </Paper>
-    </Box>
+      {/* Remark Modal */}
+      <Modal show={showRemark} onHide={() => setShowRemark(false)} centered size="lg">
+        <Modal.Header closeButton style={{ background: "#1565C0", color: "#fff" }}>
+          <Modal.Title>{selectedComplaint?.remark ? "Edit Remark" : "Add Remark"}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Complaint</Form.Label>
+            <Form.Control as="textarea" rows={2} readOnly value={selectedComplaint?.complaint || ""} />
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Admin Remark</Form.Label>
+            <Form.Control as="textarea" rows={4} value={remark} onChange={(e) => setRemark(e.target.value)} />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setShowRemark(false)}>Cancel</Button>
+          <Button variant="dark" onClick={handleRemarkSubmit} disabled={loading}>
+            {loading ? "Saving..." : "Save Remark"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Extra Styling */}
+      <style>
+        {`
+          .action-btn:hover {
+            border-color: #1565c0d8 !important;
+            background-color: transparent !important;
+            color: inherit !important;
+          }
+        `}
+      </style>
+    </Container>
   );
 };
 

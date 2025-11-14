@@ -99,7 +99,6 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Request View", icon: <Event />, path: "/request-view" },
     { text: "Request Bulk Approval", icon: <DoneAll />, path: "/Request-Bulk-Aprove" },
     { text: "Holiday Select", icon: <Flag />, path: "/holiday-select" },
-    { text: "Date Select", icon: <CalendarMonth />, path: "/date-select" },
     { text: "Apology Request", icon: <NoteAlt />, path: "/Aplology-Request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
     { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },

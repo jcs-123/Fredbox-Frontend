@@ -1,212 +1,246 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Modal,
-  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  IconButton,
   Button,
-  Paper,
+  Box,
+  CircularProgress,
+  Divider,
   Chip,
+  Card,
+  CardContent,
 } from "@mui/material";
-import { motion } from "framer-motion";
-import CloseIcon from "@mui/icons-material/Close";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const ApologyViewModal = ({ open, handleClose }) => {
-  // 🔹 Dummy Data (replace with API data later)
-  const apologyList = [
-    {
-      id: 1,
-      admissionNo: "12312019",
-      semester: "S5",
-      class: "CSE",
-      roomNo: "319",
-      studentName: "ADITYARAJ S",
-      reason: "Late return",
-      apologyNo: "APO-001",
-      applyDate: "2025-10-05",
-      status: "Accepted",
-    },
-    {
-      id: 2,
-      admissionNo: "12312019",
-      semester: "S5",
-      class: "CSE",
-      roomNo: "319",
-      studentName: "ADITYARAJ S",
-      reason: "Missed attendance",
-      apologyNo: "APO-002",
-      applyDate: "2025-09-10",
-      status: "Pending",
-    },
-  ];
+  const [apologies, setApologies] = useState([]); // multiple requests
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const user = JSON.parse(localStorage.getItem("user"));
+    const admissionNo =
+      user?.admissionNumber || user?.admissionNo || user?.admissionno;
+
+    if (!admissionNo) {
+      console.warn("⚠️ No admission number found in localStorage!");
+      setApologies([]);
+      return;
+    }
+
+    setLoading(true);
+
+    axios
+      .get(`${API_URL}/by-student`, { params: { admissionNo } })
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data.data))
+          setApologies(res.data.data);
+        else setApologies([]);
+      })
+      .catch((err) => {
+        console.error("❌ Error fetching apology:", err);
+        setApologies([]);
+      })
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Approved":
+        return "success";
+      case "Rejected":
+        return "error";
+      default:
+        return "warning";
+    }
+  };
 
   return (
-    <Modal open={open} onClose={handleClose} sx={{ zIndex: 1600 }}>
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
+        },
+      }}
+    >
+      {/* HEADER */}
+      <DialogTitle
+        sx={{
+          fontWeight: 700,
+          color: "white",
+          background: "linear-gradient(90deg, #00bcd4, #0288d1)",
+          borderBottom: "1px solid #e0f7fa",
+        }}
       >
-        <Box
+        Apology Requests
+      </DialogTitle>
+
+      {/* CONTENT */}
+      <DialogContent dividers sx={{ backgroundColor: "#f9fafb", p: 3 }}>
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+            <CircularProgress size={34} sx={{ color: "#00bcd4" }} />
+          </Box>
+        ) : apologies.length > 0 ? (
+          apologies.map((apology, index) => (
+            <Card
+              key={apology._id || index}
+              sx={{
+                mb: 2,
+                borderRadius: 2,
+                background: "#fff",
+                boxShadow: "0 3px 8px rgba(0,0,0,0.08)",
+              }}
+            >
+              <CardContent>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={1}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 600, color: "#0d47a1" }}
+                  >
+                    {apology.studentName}
+                  </Typography>
+                  <Chip
+                    label={apology.status}
+                    color={getStatusColor(apology.status)}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                      px: 1.5,
+                    }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#455a64", fontWeight: 500 }}
+                >
+                  Admission No:{" "}
+                  <Typography
+                    component="span"
+                    sx={{ color: "#01579b", fontWeight: 600 }}
+                  >
+                    {apology.admissionNo}
+                  </Typography>
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#455a64", fontWeight: 500 }}
+                >
+                  Room:{" "}
+                  <Typography
+                    component="span"
+                    sx={{ color: "#01579b", fontWeight: 600 }}
+                  >
+                    {apology.roomNo}
+                  </Typography>
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#455a64", fontWeight: 500 }}
+                >
+                  Submitted By:{" "}
+                  <Typography
+                    component="span"
+                    sx={{ color: "#01579b", fontWeight: 600 }}
+                  >
+                    {apology.submittedBy}
+                  </Typography>
+                </Typography>
+
+                <Divider sx={{ my: 1.5 }} />
+
+                <Typography
+                  variant="subtitle2"
+                  sx={{ fontWeight: 600, color: "#0277bd", mb: 0.5 }}
+                >
+                  Reason:
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "#263238",
+                    backgroundColor: "#e0f7fa",
+                    p: 2,
+                    borderRadius: 2,
+                    lineHeight: 1.6,
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {apology.reason}
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#607d8b",
+                    display: "block",
+                    textAlign: "right",
+                    mt: 2,
+                  }}
+                >
+                  Submitted on: {apology.submittedAt}
+                </Typography>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Typography
+            variant="body2"
+            sx={{
+              textAlign: "center",
+              color: "#90a4ae",
+              py: 4,
+              fontWeight: 500,
+            }}
+          >
+            No apology requests found for your account.
+          </Typography>
+        )}
+      </DialogContent>
+
+      {/* FOOTER */}
+      <DialogActions
+        sx={{
+          backgroundColor: "#e0f7fa",
+          borderTop: "1px solid #b2ebf2",
+        }}
+      >
+        <Button
+          onClick={handleClose}
           sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "95%", md: "90%" },
-            maxHeight: "85vh",
-            overflow: "auto",
-            bgcolor: "#fff",
-            borderRadius: 3,
-            boxShadow: 24,
-            p: { xs: 2, md: 3 },
+            textTransform: "none",
+            fontWeight: 600,
+            color: "#006064",
+            "&:hover": {
+              color: "#00acc1",
+              backgroundColor: "rgba(0,188,212,0.1)",
+            },
           }}
         >
-          {/* ---------- Header ---------- */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-              borderBottom: "2px solid #00bfa6",
-              pb: 1,
-            }}
-          >
-            <Typography
-              variant="h6"
-              fontWeight={700}
-              sx={{
-                color: "#00bfa6",
-                fontFamily: "Poppins, sans-serif",
-                fontSize: { xs: "1rem", md: "1.2rem" },
-              }}
-            >
-              STUDENT DETAILS
-            </Typography>
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
-          {/* ---------- Table Section ---------- */}
-          <Paper
-            elevation={2}
-            sx={{
-              overflowX: "auto",
-              borderRadius: 2,
-              "&::-webkit-scrollbar": { height: 8 },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: "#ccc",
-                borderRadius: 4,
-              },
-            }}
-          >
-            <Table size="small" sx={{ minWidth: 1100 }}>
-              <TableHead sx={{ bgcolor: "#f3f4f6" }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Id</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Admission No</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Semester</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Class</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Room No</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Student Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Apology Number</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Apply Date</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {apologyList.map((row, index) => (
-                  <TableRow
-                    key={index}
-                    sx={{
-                      bgcolor: index % 2 === 0 ? "#f9fafb" : "#ffffff",
-                      "&:hover": { bgcolor: "#eefbf9" },
-                    }}
-                  >
-                    <TableCell>{row.id}</TableCell>
-                    <TableCell>{row.admissionNo}</TableCell>
-                    <TableCell>{row.semester}</TableCell>
-                    <TableCell>{row.class}</TableCell>
-                    <TableCell>{row.roomNo}</TableCell>
-                    <TableCell>{row.studentName}</TableCell>
-                    <TableCell>{row.reason}</TableCell>
-                    <TableCell>{row.apologyNo}</TableCell>
-                    <TableCell>{row.applyDate}</TableCell>
-                    <TableCell>
-                      {row.status === "Accepted" ? (
-                        <Chip
-                          label="ACCEPTED"
-                          color="success"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      ) : row.status === "Rejected" ? (
-                        <Chip
-                          label="REJECTED"
-                          color="error"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      ) : (
-                        <Chip
-                          label="PENDING"
-                          color="warning"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          textTransform: "none",
-                          borderColor: "#64748b",
-                          color: "#64748b",
-                          "&:hover": {
-                            borderColor: "#00bfa6",
-                            color: "#00bfa6",
-                          },
-                        }}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-
-          {/* ---------- Footer Button ---------- */}
-          <Box textAlign="center" mt={3}>
-            <Button
-              variant="contained"
-              onClick={handleClose}
-              sx={{
-                bgcolor: "#00bfa6",
-                "&:hover": { bgcolor: "#009e8d" },
-                fontWeight: 600,
-                px: 4,
-                borderRadius: 2,
-              }}
-            >
-              CLOSE
-            </Button>
-          </Box>
-        </Box>
-      </motion.div>
-    </Modal>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

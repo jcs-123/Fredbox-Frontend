@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -13,144 +13,71 @@ import {
   TableBody,
   TableContainer,
   Chip,
-  MenuItem,
+  Checkbox,
   FormControl,
   InputLabel,
   Select,
-  Card,
-  CardContent,
+  MenuItem,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
 import { motion } from "framer-motion";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-/* 🔹 Dummy Request Data (Indian-style 12-hour time) */
-const dummyRequests = [
-  {
-    id: 1,
-    name: "ALFRED GEORGE",
-    leavingDate: "2025-10-18",
-    leavingTime: "08:00 AM",
-    returnDate: "2025-10-20",
-    returnTime: "04:00 PM",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    name: "EDWIN PAUL",
-    leavingDate: "2025-10-19",
-    leavingTime: "09:15 AM",
-    returnDate: "2025-10-20",
-    returnTime: "03:30 PM",
-    status: "Pending",
-  },
-  {
-    id: 3,
-    name: "LINS A T",
-    leavingDate: "2025-10-18",
-    leavingTime: "07:45 AM",
-    returnDate: "2025-10-19",
-    returnTime: "06:15 PM",
-    status: "Pending",
-  },
-  {
-    id: 4,
-    name: "AJITH VARGHESE",
-    leavingDate: "2025-10-19",
-    leavingTime: "10:00 AM",
-    returnDate: "2025-10-21",
-    returnTime: "05:00 PM",
-    status: "Pending",
-  },
-  {
-    id: 5,
-    name: "THOMAS SABU",
-    leavingDate: "2025-10-20",
-    leavingTime: "11:30 AM",
-    returnDate: "2025-10-22",
-    returnTime: "07:00 PM",
-    status: "Pending",
-  },
-];
-
-/* 🔹 Generate Indian Time Options (12-hour format) */
-const generateTimeOptions = () => {
-  const times = [];
-  
-  // AM Times
-  for (let hour = 6; hour < 12; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} AM`;
-      times.push(timeString);
-    }
-  }
-  
-  // 12 PM
-  for (let minute = 0; minute < 60; minute += 15) {
-    const timeString = `12:${minute.toString().padStart(2, '0')} PM`;
-    times.push(timeString);
-  }
-  
-  // PM Times (1-11)
-  for (let hour = 1; hour < 12; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} PM`;
-      times.push(timeString);
-    }
-  }
-  
-  return times;
+/* 🔹 Toast Config */
+const toastConfig = {
+  position: "top-center",
+  autoClose: 2500,
+  hideProgressBar: false,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: true,
 };
 
+/* 🔹 Generate Indian Time Options */
+const generateTimeOptions = () => {
+  const times = [];
+  for (let hour = 6; hour < 12; hour++)
+    for (let minute = 0; minute < 60; minute += 15)
+      times.push(`${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")} AM`);
+  for (let minute = 0; minute < 60; minute += 15)
+    times.push(`12:${minute.toString().padStart(2, "0")} PM`);
+  for (let hour = 1; hour < 12; hour++)
+    for (let minute = 0; minute < 60; minute += 15)
+      times.push(`${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")} PM`);
+  return times;
+};
 const timeOptions = generateTimeOptions();
 
-/* 🔹 Helper: Convert Indian Time to 24-hour for comparison */
+/* 🔹 Convert 12-hour → 24-hour */
 const convertTo24Hour = (timeStr) => {
-  const [time, modifier] = timeStr.split(' ');
-  let [hours, minutes] = time.split(':').map(Number);
-  
-  if (modifier === 'PM' && hours !== 12) {
-    hours += 12;
-  }
-  if (modifier === 'AM' && hours === 12) {
-    hours = 0;
-  }
-  
+  const [time, modifier] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
   return { hours, minutes };
 };
 
-/* 🔹 Helper: DateTime Compare */
+/* 🔹 Compare Dates + Times */
 const isWithinRange = (req, fromDate, fromTime, toDate, toTime) => {
   if (!fromDate || !fromTime || !toDate || !toTime) return false;
+  const reqDate = new Date(req.leavingDate);
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
-  const reqLeaveDate = new Date(req.leavingDate);
-  const startDate = new Date(fromDate);
-  const endDate = new Date(toDate);
+  const reqT = convertTo24Hour(req.leavingTime);
+  const fromT = convertTo24Hour(fromTime);
+  const toT = convertTo24Hour(toTime);
 
-  // Convert times to minutes for easy comparison
-  const reqTime = convertTo24Hour(req.leavingTime);
-  const fromTimeObj = convertTo24Hour(fromTime);
-  const toTimeObj = convertTo24Hour(toTime);
+  const reqMin = reqT.hours * 60 + reqT.minutes;
+  const fromMin = fromT.hours * 60 + fromT.minutes;
+  const toMin = toT.hours * 60 + toT.minutes;
 
-  const reqMinutes = reqTime.hours * 60 + reqTime.minutes;
-  const fromMinutes = fromTimeObj.hours * 60 + fromTimeObj.minutes;
-  const toMinutes = toTimeObj.hours * 60 + toTimeObj.minutes;
-
-  // Check if request date is within range
-  if (reqLeaveDate < startDate || reqLeaveDate > endDate) {
-    return false;
-  }
-
-  // If same as start date, check time is after fromTime
-  if (reqLeaveDate.getTime() === startDate.getTime() && reqMinutes < fromMinutes) {
-    return false;
-  }
-
-  // If same as end date, check time is before toTime
-  if (reqLeaveDate.getTime() === endDate.getTime() && reqMinutes > toMinutes) {
-    return false;
-  }
-
+  if (reqDate < start || reqDate > end) return false;
+  if (reqDate.getTime() === start.getTime() && reqMin < fromMin) return false;
+  if (reqDate.getTime() === end.getTime() && reqMin > toMin) return false;
   return true;
 };
 
@@ -160,96 +87,169 @@ function RequestBulkApproval() {
   const [toDate, setToDate] = useState("");
   const [toTime, setToTime] = useState("");
   const [filtered, setFiltered] = useState([]);
-  const [data, setData] = useState(dummyRequests);
+  const [data, setData] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  /* 🔸 Load Data */
-  const handleLoadData = () => {
-    if (!fromDate || !fromTime || !toDate || !toTime) {
-      alert("Please select all fields (From Date/Time and To Date/Time)");
-      return;
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
+  /* 🟢 Fetch Pending Requests */
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/all`);
+      toast.dismiss(); // 👈 clear previous toast
+
+      if (res.data.success) {
+        const pending = (res.data.data || []).filter((r) => r.status === "Pending");
+        setData(pending);
+
+        if (pending.length > 0) {
+          toast.info(`📦 ${pending.length} pending requests loaded`, {
+            ...toastConfig,
+            style: {
+              background: "linear-gradient(135deg, #1565C0, #42A5F5)",
+              color: "#fff",
+              fontWeight: 600,
+            },
+          });
+        } else {
+          toast.warning("✅ No pending requests found", {
+            ...toastConfig,
+            style: {
+              background: "linear-gradient(135deg, #546E7A, #90A4AE)",
+              color: "#fff",
+            },
+          });
+        }
+      } else {
+        toast.error("❌ Failed to load requests", toastConfig);
+      }
+    } catch (err) {
+      console.error("❌ Fetch Error:", err);
+      toast.dismiss(); // clear before showing new one
+      toast.error("🚨 Server connection failed", toastConfig);
     }
-
-    if (new Date(fromDate) > new Date(toDate)) {
-      alert("From Date cannot be after To Date!");
-      return;
-    }
-
-    const result = data.filter((req) =>
-      isWithinRange(req, fromDate, fromTime, toDate, toTime)
-    );
-    setFiltered(result);
   };
 
-  /* 🔸 Clear Filters */
+  fetchData();
+}, []);
+
+  /* 🔸 Filter Data */
+const handleLoadData = () => {
+  toast.dismiss(); // 👈 clear any previous message
+
+  if (!fromDate || !fromTime || !toDate || !toTime)
+    return toast.warn("⚠️ Please select all fields", toastConfig);
+
+  if (new Date(fromDate) > new Date(toDate))
+    return toast.error("🚫 From Date cannot be after To Date!", toastConfig);
+
+  const result = data.filter((req) =>
+    isWithinRange(req, fromDate, fromTime, toDate, toTime)
+  );
+  setFiltered(result);
+  setSelectedIds([]);
+
+  result.length
+    ? toast.success(`✅ ${result.length} record(s) matched your filter`, toastConfig)
+    : toast.warning("ℹ️ No requests in selected range", toastConfig);
+};
+
+
+  /* 🔸 Clear */
   const handleClearFilters = () => {
     setFromDate("");
     setFromTime("");
     setToDate("");
     setToTime("");
     setFiltered([]);
+    setSelectedIds([]);
+    toast.info("🧹 Filters cleared", toastConfig);
   };
 
-  /* 🔸 Approve All */
-  const handleApproveAll = () => {
-    if (filtered.length === 0) {
-      alert("No records to approve!");
-      return;
-    }
-
-    const updated = data.map((req) =>
-      filtered.find((f) => f.id === req.id)
-        ? { ...req, status: "Approved" }
-        : req
+  /* 🔸 Select Handlers */
+  const handleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
-    setData(updated);
-    setFiltered(updated.filter((req) =>
-      isWithinRange(req, fromDate, fromTime, toDate, toTime)
-    ));
-    alert("✅ All requests in the current list have been approved!");
+  };
+  const handleSelectAll = () => {
+    if (selectedIds.length === filtered.length) setSelectedIds([]);
+    else setSelectedIds(filtered.map((r) => r._id));
   };
 
-  /* 🔸 Mobile Card View */
-  const MobileCardView = ({ request, index }) => (
-    <Card sx={{ mb: 2, boxShadow: 2, borderRadius: 2 }}>
-      <CardContent sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Typography variant="h6" fontWeight="bold" fontSize={isSmallMobile ? "0.9rem" : "1rem"}>
-            {request.name}
-          </Typography>
-          <Chip
-            label={request.status}
-            size="small"
-            color={request.status === "Approved" ? "success" : "warning"}
-            sx={{ fontSize: '0.7rem' }}
-          />
-        </Box>
+  /* 🔸 Confirm + Update */
+/* 🔸 Confirm + Update (with custom toast confirmation) */
+const handleBulkUpdate = async (status) => {
+  if (selectedIds.length === 0)
+    return toast.warning("⚠️ No records selected", toastConfig);
 
-        <Grid container spacing={1} sx={{ mb: 1 }}>
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">Leaving</Typography>
-            <Typography variant="body2">
-              {request.leavingDate}<br/>
-              {request.leavingTime}
-            </Typography>
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">Returning</Typography>
-            <Typography variant="body2">
-              {request.returnDate}<br/>
-              {request.returnTime}
-            </Typography>
-          </Grid>
-        </Grid>
-      </CardContent>
-    </Card>
+  // 🟢 show confirmation toast
+  toast.info(
+    <div style={{ textAlign: "center" }}>
+      <p style={{ fontWeight: 600, marginBottom: "8px" }}>
+        Are you sure you want to <b>{status}</b> {selectedIds.length} request(s)?
+      </p>
+      <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+        <Button
+          variant="contained"
+          color={status === "ACCEPT" ? "success" : "error"}
+          size="small"
+          onClick={async () => {
+            toast.dismiss(); // close confirmation toast
+            try {
+              for (const id of selectedIds) {
+                await axios.put(`${API_URL}/status/${id}`, { status });
+              }
+              toast.success(
+                `✅ ${selectedIds.length} request(s) ${status}ED successfully!`,
+                toastConfig
+              );
+              // Update UI
+              const updated = filtered.filter((req) => !selectedIds.includes(req._id));
+              setFiltered(updated);
+              setData((prev) => prev.filter((req) => !selectedIds.includes(req._id)));
+              setSelectedIds([]);
+            } catch (err) {
+              console.error("❌ Bulk update error:", err);
+              toast.error("❌ Failed to update status", toastConfig);
+            }
+          }}
+        >
+          Yes
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          size="small"
+          onClick={() => toast.dismiss()}
+        >
+          No
+        </Button>
+      </div>
+    </div>,
+    {
+      autoClose: false,
+      closeOnClick: false,
+      draggable: false,
+      position: "top-center",
+      style: {
+        background: status === "ACCEPT"
+          ? "linear-gradient(135deg,#2E7D32,#81C784)"
+          : "linear-gradient(135deg,#C62828,#EF5350)",
+        color: "#fff",
+        borderRadius: "10px",
+      },
+    }
   );
+};
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+      <ToastContainer />
       <Box
         sx={{
           bgcolor: "#f8fafc",
@@ -258,283 +258,134 @@ function RequestBulkApproval() {
           fontFamily: "Poppins, sans-serif",
         }}
       >
-        {/* ===== Header ===== */}
         <Typography
           variant="h4"
           fontWeight="bold"
+          textAlign="center"
           sx={{
             mb: 4,
-            textAlign: "center",
-            fontSize: { xs: "1.6rem", sm: "2rem", md: "2.2rem" },
             background: "linear-gradient(135deg, #1e3c72, #2a5298)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
           }}
         >
-          Request Bulk Approval
+          Messcut Bulk Approval
         </Typography>
 
         {/* ===== Filter Section ===== */}
-        <Paper
-          sx={{
-            p: { xs: 2, sm: 3 },
-            borderRadius: 3,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-            mb: 4,
-          }}
-        >
+        <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 4 }}>
           <Grid container spacing={2} alignItems="center">
-            {/* From Date */}
             <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="From Date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                size={isSmallMobile ? "small" : "medium"}
-              />
+              <TextField fullWidth label="From Date" type="date" InputLabelProps={{ shrink: true }}
+                value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </Grid>
-
-            {/* From Time */}
             <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size={isSmallMobile ? "small" : "medium"}>
+              <FormControl fullWidth>
                 <InputLabel>From Time</InputLabel>
-                <Select
-                  value={fromTime}
-                  label="From Time"
-                  onChange={(e) => setFromTime(e.target.value)}
-                >
-                  {timeOptions.map((time) => (
-                    <MenuItem key={`from-${time}`} value={time}>
-                      {time}
-                    </MenuItem>
-                  ))}
+                <Select value={fromTime} label="From Time" onChange={(e) => setFromTime(e.target.value)}>
+                  {timeOptions.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-
-            {/* To Date */}
             <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="To Date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                size={isSmallMobile ? "small" : "medium"}
-                inputProps={{ 
-                  min: fromDate // To date cannot be before from date
-                }}
-              />
+              <TextField fullWidth label="To Date" type="date" InputLabelProps={{ shrink: true }}
+                value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </Grid>
-
-            {/* To Time */}
             <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size={isSmallMobile ? "small" : "medium"}>
+              <FormControl fullWidth>
                 <InputLabel>To Time</InputLabel>
-                <Select
-                  value={toTime}
-                  label="To Time"
-                  onChange={(e) => setToTime(e.target.value)}
-                >
-                  {timeOptions.map((time) => (
-                    <MenuItem key={`to-${time}`} value={time}>
-                      {time}
-                    </MenuItem>
-                  ))}
+                <Select value={toTime} label="To Time" onChange={(e) => setToTime(e.target.value)}>
+                  {timeOptions.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
 
-            {/* Action Buttons */}
             <Grid item xs={6} sm={4} md={2}>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleLoadData}
-                disabled={!fromDate || !fromTime || !toDate || !toTime}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  background: "linear-gradient(135deg, #1e3c72, #2a5298)",
-                  "&:hover": {
-                    background: "linear-gradient(135deg, #0d285b, #1b3c7a)",
-                  },
-                  fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                  py: 1,
-                }}
-              >
+              <Button fullWidth variant="contained" onClick={handleLoadData}>
                 Load Data
               </Button>
             </Grid>
-
             <Grid item xs={6} sm={4} md={2}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleClearFilters}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                  py: 1,
-                }}
-              >
+              <Button fullWidth variant="outlined" onClick={handleClearFilters}>
                 Clear
               </Button>
-            </Grid>
-
-            {/* Results Count */}
-            <Grid item xs={12}>
-              <Typography variant="body2" color="text.secondary">
-                {filtered.length} request(s) found
-              </Typography>
             </Grid>
           </Grid>
         </Paper>
 
-        {/* ===== Data Display ===== */}
-        {filtered.length > 0 && (
-          <Paper
-            sx={{
-              borderRadius: 3,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-              overflow: "hidden",
-              p: 2,
-              mb: 2,
-            }}
-          >
-            <Box sx={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              flexDirection: isMobile ? "column" : "row",
-              gap: 2,
-              mb: 2 
-            }}>
-              <Typography variant="h6">
-                Filtered Requests ({filtered.length})
-              </Typography>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleApproveAll}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  px: 3,
-                  fontWeight: 600,
-                  fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                }}
-              >
-                Approve All ({filtered.length})
-              </Button>
-            </Box>
-          </Paper>
-        )}
-
-        {/* ===== Mobile Card View ===== */}
-        {isMobile ? (
-          <Box>
-            {filtered.length > 0 ? (
-              filtered.map((request, index) => (
-                <MobileCardView key={request.id} request={request} index={index} />
-              ))
-            ) : (
-              <Paper sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="text.secondary">
-                  {fromDate && fromTime && toDate && toTime 
-                    ? "No requests found in the selected time range" 
-                    : "Please select date and time range to load data"
-                  }
-                </Typography>
-              </Paper>
-            )}
-          </Box>
-        ) : (
-          /* ===== Desktop Table View ===== */
-          <Paper
-            sx={{
-              borderRadius: 3,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-              overflowX: "auto",
-            }}
-          >
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f0f4ff" }}>
-                    {[
-                      "#",
-                      "Name",
-                      "Leaving Date",
-                      "Leaving Time",
-                      "Returning Date",
-                      "Returning Time",
-                      "Status",
-                    ].map((head) => (
-                      <TableCell
-                        key={head}
-                        align="center"
-                        sx={{
-                          fontWeight: "bold",
-                          fontSize: { xs: "0.75rem", sm: "0.85rem" },
-                          whiteSpace: "nowrap",
-                          py: 2,
-                        }}
-                      >
-                        {head}
+        {/* ===== Data Table ===== */}
+        <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#f0f4ff" }}>
+                  <TableCell align="center">
+                    <Checkbox
+                      checked={selectedIds.length === filtered.length && filtered.length > 0}
+                      indeterminate={selectedIds.length > 0 && selectedIds.length < filtered.length}
+                      onChange={handleSelectAll}
+                    />
+                  </TableCell>
+                  {["#", "Name", "Leaving Date", "Leaving Time", "Returning Date", "Returning Time", "Status"].map((head) => (
+                    <TableCell key={head} align="center" sx={{ fontWeight: "bold" }}>
+                      {head}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.length > 0 ? (
+                  filtered.map((req, index) => (
+                    <TableRow key={req._id}>
+                      <TableCell align="center">
+                        <Checkbox
+                          checked={selectedIds.includes(req._id)}
+                          onChange={() => handleSelect(req._id)}
+                        />
                       </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {filtered.length > 0 ? (
-                    filtered.map((req, index) => (
-                      <TableRow
-                        key={req.id}
-                        sx={{
-                          backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
-                          "&:hover": { backgroundColor: "#eef3fc" },
-                        }}
-                      >
-                        <TableCell align="center">{index + 1}</TableCell>
-                        <TableCell align="center">{req.name}</TableCell>
-                        <TableCell align="center">{req.leavingDate}</TableCell>
-                        <TableCell align="center">{req.leavingTime}</TableCell>
-                        <TableCell align="center">{req.returnDate}</TableCell>
-                        <TableCell align="center">{req.returnTime}</TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={req.status}
-                            color={req.status === "Approved" ? "success" : "warning"}
-                            variant="outlined"
-                            size={isSmallMobile ? "small" : "medium"}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell align="center" colSpan={7} sx={{ py: 4 }}>
-                        <Typography color="text.secondary">
-                          {fromDate && fromTime && toDate && toTime 
-                            ? "No requests found in the selected time range" 
-                            : "Please select date and time range to load data"
-                          }
-                        </Typography>
+                      <TableCell align="center">{index + 1}</TableCell>
+                      <TableCell align="center">{req.name}</TableCell>
+                      <TableCell align="center">{req.leavingDate}</TableCell>
+                      <TableCell align="center">{req.leavingTime}</TableCell>
+                      <TableCell align="center">{req.returningDate}</TableCell>
+                      <TableCell align="center">{req.returningTime}</TableCell>
+                      <TableCell align="center">
+                        <Chip label={req.status} color={req.status === "ACCEPT" ? "success" : "warning"} variant="outlined" />
                       </TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell align="center" colSpan={8}>
+                      No data found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+
+        {/* ===== Action Buttons ===== */}
+        {filtered.length > 0 && (
+          <Box mt={3} display="flex" gap={2} justifyContent="center" flexWrap="wrap">
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => handleBulkUpdate("ACCEPT")}
+              disabled={selectedIds.length === 0}
+            >
+              ✅ Accept Selected ({selectedIds.length})
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => handleBulkUpdate("REJECT")}
+              disabled={selectedIds.length === 0}
+            >
+              ❌ Reject Selected ({selectedIds.length})
+            </Button>
+          </Box>
         )}
       </Box>
     </motion.div>

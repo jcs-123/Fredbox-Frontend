@@ -11,7 +11,6 @@ import RequestView from './Pages/RequestView';
 import RequestBulkAproval from './Pages/RequestBulkAproval';
 import ApologyRequest from './Pages/ApologyRequest';
 import HolidaySelect from './Pages/HolidaySelect';
-import DateSelect from './Pages/DateSelect';
 import ComplaintDetails from './Pages/ComplaintDetails';
 import StudentDetails from './Pages/StudentDetails';
 import PresentMesscutReport from './Pages/PresentMesscutReport';
@@ -20,6 +19,7 @@ import AbsentNoMesscutReport from './Pages/AbsentNoMesscutReport';
 import AbsenteesReport from './Pages/AbsenteesReport';
 import AttendanceComparisonReport from './Pages/AttendanceComparisonReport';
 import UserForm from './Pages/UserForm';
+import ForgotPassword from './Pages/ForgotPassword';
 
 
 function App() {
@@ -29,7 +29,7 @@ function App() {
         {/* Login page without layout */}
         <Route path='/login' element={<Login />} />
         <Route path='/' element={<Login />} />
-
+<Route path="/forgot-password" element={<ForgotPassword/>} />
         {/* Routes with layout using Outlet */}
         <Route element={<Layout />}>
           <Route path='/dashboard' element={<AdminDashboard />} />
@@ -41,7 +41,6 @@ function App() {
           <Route path='/Request-Bulk-Aprove' element={<RequestBulkAproval />} />
           <Route path='/Aplology-Request' element={<ApologyRequest />}/>
           <Route path='/holiday-select' element={<HolidaySelect />} />
-          <Route path="/date-select" element={<DateSelect />} />
           <Route path="/complaint-details" element={<ComplaintDetails />} />
           <Route path="/student-details" element={<StudentDetails />} />
           <Route path="/present-messcut-report" element={<PresentMesscutReport />} />
