@@ -105,10 +105,25 @@ const [openComplaintView, setOpenComplaintView] = useState(false);
   };
 
 const handleMesscutSubmit = async () => {
+
+  // 🔍 CHECK REQUIRED FIELDS BEFORE SENDING TO SERVER
+  if (
+    !formData.leavingDate ||
+    !formData.leavingTime ||
+    !formData.returningDate ||
+    !formData.returningTime ||
+    !formData.reason
+  ) {
+    toast.warning(" All fields are required!");
+    return; // ❌ STOP HERE — DO NOT CALL SERVER
+  }
+
   try {
     const res = await axios.post("http://localhost:4000/adddetail", formData);
+
     if (res.data.success) {
       toast.success("✅ Mess cut request submitted!");
+
       setFormData((prev) => ({
         ...prev,
         leavingDate: "",
@@ -125,6 +140,7 @@ const handleMesscutSubmit = async () => {
     toast.error("Server error, please try again later.");
   }
 };
+
 
 const handleComplaintSubmit = async () => {
   try {

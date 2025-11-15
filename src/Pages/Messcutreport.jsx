@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Container,
@@ -7,51 +9,81 @@ import {
   Button,
   Form,
   Table,
-  Modal,
   Badge,
   Spinner,
-  Alert,
   InputGroup,
 } from "react-bootstrap";
 import axios from "axios";
-import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
-  Download,
   FileEarmarkExcel,
   FileEarmarkPdf,
-  Eye,
   ArrowClockwise,
   Search,
-  Calendar,
-  Person,
 } from "react-bootstrap-icons";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const MesscutReport = () => {
-  const [data, setData] = useState([]);
+  const [summary, setSummary] = useState([]);
+  const [details, setDetails] = useState([]);
+
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  const [showModal, setShowModal] = useState(false);
-  const [student, setStudent] = useState(null);
-  const [details, setDetails] = useState([]);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // ===============================
+  // CALCULATIONS
+  // ===============================
+const calculateMesscut = (leave, ret) => {
+  try {
+    const d1 = new Date(leave);
+    const d2 = new Date(ret);
 
-  // Fetch main report data
+    // total day difference (inclusive)
+    const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+
+    // Exclude only leaving day (joining day is NOT counted)
+    const effective = diff - 1;
+
+    return effective > 0 ? effective : 0;
+  } catch {
+    return 0;
+  }
+};
+const calculateDuration = (leave, ret) => {
+  try {
+    const d1 = new Date(leave);
+    const d2 = new Date(ret);
+
+    const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+
+    // exclude leaving date
+    const duration = diff - 1;
+
+    return duration > 0 ? `${duration} day${duration !== 1 ? "s" : ""}` : "0 days";
+  } catch {
+    return "N/A";
+  }
+};
+
+
+  // ===============================
+  // FETCH DATA
+  // ===============================
   const fetchReport = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await axios.get(`${API_URL}/api/messcut/report`);
-      setData(res.data.data || []);
-    } catch (err) {
-      console.error("Error fetching report:", err);
+      const summaryRes = await axios.get(`${API_URL}/api/messcut/report`);
+      const detailsRes = await axios.get(`${API_URL}/api/messcut/all-details`);
+
+      setSummary(summaryRes.data.data || []);
+      setDetails(detailsRes.data.data || []);
     } finally {
       setLoading(false);
     }
@@ -61,405 +93,251 @@ const MesscutReport = () => {
     fetchReport();
   }, []);
 
-  // Filter logic
-  const filtered = useMemo(() => {
-    return data.filter((r) => {
-      const s = search.toLowerCase();
-      const matchText =
+  // ===============================
+  // SUMMARY FILTER
+  // ===============================
+  const filteredSummary = useMemo(() => {
+    const s = search.toLowerCase();
+
+    return summary.filter((r) => {
+      const textMatch =
         r.name?.toLowerCase().includes(s) ||
         r.admissionNumber?.toLowerCase().includes(s);
-      const matchFrom = fromDate ? new Date(r.lastDate) >= new Date(fromDate) : true;
-      const matchTo = toDate ? new Date(r.lastDate) <= new Date(toDate) : true;
-      return matchText && matchFrom && matchTo;
-    });
-  }, [data, search, fromDate, toDate]);
 
-  // Fetch student details
-  const handleView = async (row) => {
-    try {
-      setShowModal(true);
-      setDetailLoading(true);
-      setStudent(row);
-      const res = await axios.get(`${API_URL}/api/messcut/student`, {
-        params: { admissionNo: row.admissionNumber },
-      });
-      setDetails(res.data.data || []);
-    } catch (err) {
-      console.error("Error fetching student details:", err);
-    } finally {
-      setDetailLoading(false);
-    }
+      const fromMatch =
+        fromDate === "" || new Date(r.lastDate) >= new Date(fromDate);
+
+      const toMatch =
+        toDate === "" || new Date(r.lastDate) <= new Date(toDate);
+
+      return textMatch && fromMatch && toMatch;
+    });
+  }, [summary, search, fromDate, toDate]);
+
+  // ===============================
+  // FULL DETAILS FILTER
+  // ===============================
+  const filteredDetails = useMemo(() => {
+    const s = search.toLowerCase();
+    let data = [...details];
+
+    // search
+    data = data.filter(
+      (d) =>
+        d.name?.toLowerCase().includes(s) ||
+        d.admissionNumber?.toLowerCase().includes(s)
+    );
+
+    // date
+    if (fromDate)
+      data = data.filter(
+        (d) => new Date(d.leavingDate) >= new Date(fromDate)
+      );
+
+    if (toDate)
+      data = data.filter(
+        (d) => new Date(d.leavingDate) <= new Date(toDate)
+      );
+
+    return data;
+  }, [details, search, fromDate, toDate]);
+
+  // ===============================
+  // TOTAL STUDENT MESSCUT
+  // ===============================
+  const getStudentTotalMesscut = (adm) => {
+    const recs = details.filter((x) => x.admissionNumber === adm);
+    return recs.reduce(
+      (acc, d) => acc + calculateMesscut(d.leavingDate, d.returningDate),
+      0
+    );
   };
 
+  const getBadgeVariant = (v) => {
+    if (v === 0) return "success";
+    if (v >= 5) return "danger";
+    return "warning";
+  };
 
+  // ===============================
+  // EXPORTS
+  // ===============================
+  const prepareDetails = () =>
+    filteredDetails.map((d, i) => ({
+      "#": i + 1,
+      Name: d.name,
+      "Admission No": d.admissionNumber,
+      "Leaving Date": d.leavingDate,
+      "Returning Date": d.returningDate,
+      Duration: calculateDuration(d.leavingDate, d.returningDate),
+      Messcut: calculateMesscut(d.leavingDate, d.returningDate),
+      Reason: d.reason,
+      Status: d.status,
+    }));
 
-const exportExcel = async (rows, filename, isStudentDetail = false, studentInfo = null) => {
-  if (!rows.length) return alert("No data to export!");
+ const exportExcel = async (rows, filename) => {
+  if (!rows.length) return alert("No data!");
 
   try {
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Messcut Report");
+    const sheet = workbook.addWorksheet("Report");
 
-    // 🔷 Header Section
-    sheet.mergeCells("A1", "G1");
-    sheet.getCell("A1").value = "JYOTHI ENGINEERING COLLEGE";
-    sheet.getCell("A1").font = { bold: true, size: 16, color: { argb: "2C3E50" } };
-    sheet.getCell("A1").alignment = { horizontal: "center" };
-    sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E8F4FD" } };
-
-    sheet.mergeCells("A2", "G2");
-    sheet.getCell("A2").value = "Mess Cut Management System";
-    sheet.getCell("A2").font = { bold: true, size: 12, color: { argb: "34495E" } };
-    sheet.getCell("A2").alignment = { horizontal: "center" };
-
-    sheet.mergeCells("A3", "G3");
-    sheet.getCell("A3").value = isStudentDetail ? "STUDENT DETAILED REPORT" : "MESS CUT SUMMARY REPORT";
-    sheet.getCell("A3").font = { bold: true, size: 14, color: { argb: "FFFFFF" } };
-    sheet.getCell("A3").alignment = { horizontal: "center" };
-    sheet.getCell("A3").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "2980B9" } };
-
-    // 🔹 Info Section
-    let infoStart = 5;
-    sheet.getCell(`A${infoStart}`).value = "Generated On";
-    sheet.getCell(`B${infoStart}`).value = new Date().toLocaleString("en-IN");
-    infoStart++;
-
-    sheet.getCell(`A${infoStart}`).value = "Total Records";
-    sheet.getCell(`B${infoStart}`).value = rows.length;
-    infoStart++;
-
-    if (isStudentDetail && studentInfo) {
-      sheet.getCell(`A${infoStart}`).value = "Student Name";
-      sheet.getCell(`B${infoStart}`).value = studentInfo.name;
-      infoStart++;
-
-      sheet.getCell(`A${infoStart}`).value = "Admission Number";
-      sheet.getCell(`B${infoStart}`).value = studentInfo.admissionNumber;
-      infoStart++;
-
-      sheet.getCell(`A${infoStart}`).value = "Academic Info";
-      sheet.getCell(`B${infoStart}`).value = `${studentInfo.branch} - Sem ${studentInfo.sem}`;
-      infoStart++;
-    }
-
-    infoStart += 1; // Add space before table
-
-    // 🔹 Table Header
     const headers = Object.keys(rows[0]);
+
+    // ----------------------------------------------------
+    // ADD TITLE ROW (MERGED)
+    // ----------------------------------------------------
+    const title = "Messcut Report";
+
+    // Merge cells for title across all header columns
+    sheet.mergeCells(1, 1, 1, headers.length);
+
+    const titleCell = sheet.getCell("A1");
+    titleCell.value = title;
+
+    // Title styling
+    titleCell.font = {
+      bold: true,
+      size: 16,
+      color: { argb: "FFFFFFFF" },
+    };
+
+    titleCell.alignment = { horizontal: "center", vertical: "middle" };
+
+    titleCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2E75B6" }, // Blue background
+    };
+
+    // Increase title row height
+    sheet.getRow(1).height = 25;
+
+    // ----------------------------------------------------
+    // HEADER ROW (Row 2)
+    // ----------------------------------------------------
     const headerRow = sheet.addRow(headers);
+
     headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "2C3E50" } };
+      cell.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1F4E78" }, // Dark blue header
+      };
       cell.border = {
         top: { style: "thin" },
-        left: { style: "thin" },
         bottom: { style: "thin" },
+        left: { style: "thin" },
         right: { style: "thin" },
       };
     });
 
-    // 🔹 Data Rows
-    rows.forEach((row, idx) => {
+    // ----------------------------------------------------
+    // DATA ROWS
+    // ----------------------------------------------------
+    rows.forEach((row, index) => {
       const newRow = sheet.addRow(Object.values(row));
+
       newRow.eachCell((cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.alignment = { horizontal: "center" };
+
         cell.border = {
           top: { style: "thin" },
-          left: { style: "thin" },
           bottom: { style: "thin" },
+          left: { style: "thin" },
           right: { style: "thin" },
         };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: idx % 2 === 0 ? "F8F9FA" : "FFFFFF" },
-        };
       });
-    });
 
-    // 🔹 Adjust column widths
-    sheet.columns.forEach((col) => {
-      col.width = 18;
-    });
-
-    // 🔹 Save Excel File
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    saveAs(blob, `${filename}_${Date.now()}.xlsx`);
-
-  } catch (error) {
-    console.error("Excel export error:", error);
-    alert("Failed to generate Excel file. Please try again.");
-  }
-};
-
-// Professional PDF Export with Advanced Styling
-const exportPDF = (rows, filename, title, isStudentDetail = false, studentInfo = null) => {
-  if (!rows.length) {
-    alert("No data to export!");
-    return;
-  }
-
-  try {
-    const doc = new jsPDF("p", "mm", "a4");
-    const pageWidth = doc.internal.pageSize.width;
-    let currentY = 15;
-
-    // 🔷 HEADER STRIP
-    doc.setFillColor(41, 128, 185);
-    doc.rect(0, 0, pageWidth, 25, "F");
-
-    // 🔷 COLLEGE TITLE
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    doc.text("JYOTHI ENGINEERING COLLEGE", pageWidth / 2, 12, { align: "center" });
-
-    // 🔷 SUBTITLE
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text("Mess Cut Management System", pageWidth / 2, 19, { align: "center" });
-
-    currentY = 33;
-
-    // 🔷 REPORT TITLE
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(41, 128, 185);
-    doc.text(title.toUpperCase(), pageWidth / 2, currentY, { align: "center" });
-    currentY += 8;
-
-    // 🔹 Info Box (Student / Summary)
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-
-    const boxHeight = isStudentDetail ? 32 : 24;
-    doc.setDrawColor(220, 220, 220);
-    doc.setFillColor(248, 249, 250);
-    doc.roundedRect(12, currentY, pageWidth - 24, boxHeight, 3, 3, "FD");
-
-    let infoY = currentY + 6;
-    if (isStudentDetail && studentInfo) {
-      doc.setFont("helvetica", "bold");
-      doc.text(`Student Name:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(studentInfo.name, 55, infoY);
-
-      infoY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Admission No:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(studentInfo.admissionNumber, 55, infoY);
-
-      infoY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Branch & Sem:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${studentInfo.branch || '-'} | Semester ${studentInfo.sem || '-'}`, 55, infoY);
-
-      infoY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Generated On:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(new Date().toLocaleString("en-IN"), 55, infoY);
-    } else {
-      doc.setFont("helvetica", "bold");
-      doc.text(`Date Range:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${fromDate || 'All Dates'} to ${toDate || 'All Dates'}`, 55, infoY);
-
-      infoY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Total Records:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(String(rows.length), 55, infoY);
-
-      infoY += 5;
-      doc.setFont("helvetica", "bold");
-      doc.text(`Generated On:`, 16, infoY);
-      doc.setFont("helvetica", "normal");
-      doc.text(new Date().toLocaleString("en-IN"), 55, infoY);
-    }
-
-    currentY += boxHeight + 10;
-
-    // 🔹 Table Data
-    const headers = Object.keys(rows[0]);
-    const tableData = rows.map(r => Object.values(r));
-
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: currentY,
-      theme: "grid",
-      styles: {
-        font: "helvetica",
-        fontSize: 9,
-        textColor: [33, 33, 33],
-        lineColor: [220, 220, 220],
-        lineWidth: 0.2,
-        cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
-        overflow: "linebreak",
-        valign: "middle"
-      },
-      headStyles: {
-        fillColor: [44, 62, 80],
-        textColor: [255, 255, 255],
-        fontSize: 9.5,
-        halign: "center"
-      },
-      bodyStyles: {
-        halign: "center",
-        cellWidth: "wrap"
-      },
-      columnStyles: {
-        0: { cellWidth: 12 },  // Sl.No
-        1: { cellWidth: 30 },  // Student Name / Leaving Date
-        2: { cellWidth: 25 },  // Admission / Returning Date
-        3: { cellWidth: 25 },  // Branch / Reason
-        4: { cellWidth: 25 },  // Status / Duration
-        5: { cellWidth: 25 },  // Count or extra column
-      },
-      alternateRowStyles: {
-        fillColor: [250, 250, 250]
-      },
-      didDrawPage: (data) => {
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Page ${data.pageNumber} of ${doc.internal.getNumberOfPages()}`,
-          pageWidth / 2,
-          doc.internal.pageSize.height - 10,
-          { align: "center" }
-        );
-        doc.text(
-          "Confidential — Jyothi Engineering College",
-          14,
-          doc.internal.pageSize.height - 10
-        );
+      // Alternate row color (light gray)
+      if (index % 2 === 0) {
+        newRow.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF2F2F2" },
+          };
+        });
       }
     });
 
-    // 🔷 Watermark (Light JEC)
-    doc.setPage(1);
-    doc.setTextColor(230, 230, 230);
-    doc.setFontSize(48);
-    doc.text("JEC", pageWidth / 2, 150, {
-      align: "center",
-      angle: 45
+    // ----------------------------------------------------
+    // AUTO COLUMN WIDTH
+    // ----------------------------------------------------
+    sheet.columns.forEach((col) => {
+      let maxLength = 10;
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const val = cell.value ? cell.value.toString().length : 10;
+        if (val > maxLength) maxLength = val;
+      });
+      col.width = maxLength + 5;
     });
 
-    doc.save(`${filename}_${Date.now()}.pdf`);
+    // ----------------------------------------------------
+    // EXPORT FILE
+    // ----------------------------------------------------
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${filename}.xlsx`);
+
   } catch (error) {
-    console.error("PDF export error:", error);
-    alert("Failed to generate PDF file. Please try again.");
+    console.error("Excel export error:", error);
   }
 };
 
-  // Data preparation
-  const prepareSummary = () =>
-    filtered.map((r, i) => ({
-      "#": i + 1,
-      "Student Name": r.name,
-      "Admission No": r.admissionNumber,
-      Branch: r.branch,
-      Semester: r.sem,
-      "Mess Cuts": r.count,
-      "Last Date": new Date(r.lastDate).toLocaleDateString("en-IN"),
-    }));
 
-  const prepareDetails = () =>
-    details.map((d, i) => ({
-      "#": i + 1,
-      "Leaving Date": d.leavingDate,
-      "Returning Date": d.returningDate,
-      Reason: d.reason,
-      Status: d.status,
-      Duration: calculateDuration(d.leavingDate, d.returningDate),
-    }));
+  const exportPDF = (rows, filename) => {
+    if (!rows.length) return alert("No data!");
 
-  const calculateDuration = (leave, ret) => {
-    try {
-      const l = new Date(leave);
-      const r = new Date(ret);
-      const diff = Math.abs(r - l);
-      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-      return `${days} day${days !== 1 ? "s" : ""}`;
-    } catch {
-      return "N/A";
-    }
+    const doc = new jsPDF();
+    autoTable(doc, {
+      head: [Object.keys(rows[0])],
+      body: rows.map((r) => Object.values(r)),
+    });
+    doc.save(`${filename}.pdf`);
   };
 
-  const getBadgeVariant = (count) => {
-    if (count === 0) return "success";
-    if (count >= 5) return "danger";
-    return "warning";
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status?.toUpperCase()) {
-      case "ACCEPT":
-        return "success";
-      case "REJECT":
-        return "danger";
-      case "PENDING":
-        return "warning";
-      default:
-        return "secondary";
-    }
-  };
-
+  // ===============================
+  // UI
+  // ===============================
   return (
-    <Container fluid className="py-4 bg-light min-vh-100">
-      {/* HEADER */}
-      <div className="text-center mb-4">
-        <h2 className="fw-bold text-primary">Mess Cut Report</h2>
-        <p className="text-muted mb-0">Student Mess Cut Records and Summary</p>
-      </div>
+    <Container fluid className="py-4 bg-light">
+
+      <h2 className="fw-bold text-primary text-center mb-4">Messcut Report</h2>
 
       {/* FILTERS */}
-      <Card className="shadow-sm border-0 mb-3">
+      <Card className="shadow-sm mb-3">
         <Card.Header className="bg-primary text-white">
-          <Search className="me-2" />
-          Filter & Controls
+          <Search className="me-2" /> Filters
         </Card.Header>
+
         <Card.Body>
           <Row className="g-3">
-            <Col md={3} sm={6}>
-              <Form.Label>
-                <Calendar className="me-1" />
-                From Date
-              </Form.Label>
+
+            <Col md={3}>
+              <Form.Label>From Date</Form.Label>
               <Form.Control
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
             </Col>
-            <Col md={3} sm={6}>
-              <Form.Label>
-                <Calendar className="me-1" />
-                To Date
-              </Form.Label>
+
+            <Col md={3}>
+              <Form.Label>To Date</Form.Label>
               <Form.Control
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
               />
             </Col>
+
             <Col md={6}>
-              <Form.Label>
-                <Search className="me-1" />
-                Search
-              </Form.Label>
+              <Form.Label>Search</Form.Label>
               <InputGroup>
                 <Form.Control
-                  placeholder="Search by Name or Admission No"
+                  placeholder="Search Name / Admission No"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -475,184 +353,79 @@ const exportPDF = (rows, filename, title, isStudentDetail = false, studentInfo =
                 </Button>
               </InputGroup>
             </Col>
+
           </Row>
         </Card.Body>
       </Card>
 
-      {/* EXPORT BUTTONS */}
-      <div className="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <Button
-          variant="success"
-          className="d-flex align-items-center"
-          onClick={() => exportExcel(prepareSummary(), "Messcut_Report")}
-        >
-          <FileEarmarkExcel className="me-2" />
-          Export Excel
-        </Button>
-        <Button
-          variant="danger"
-          className="d-flex align-items-center"
-          onClick={() =>
-            exportPDF(prepareSummary(), "Messcut_Report", "Mess Cut Report")
-          }
-        >
-          <FileEarmarkPdf className="me-2" />
-          Export PDF
-        </Button>
-        <Button
-          variant="outline-primary"
-          onClick={fetchReport}
-          className="d-flex align-items-center"
-        >
-          <ArrowClockwise className="me-2" />
-          Refresh
-        </Button>
-      </div>
 
-      {/* DATA TABLE */}
-      <Card className="shadow-sm border-0">
+      {/* FULL DETAILS TABLE */}
+      <Card>
+        <Card.Header className="fw-bold d-flex justify-content-between">
+          <span>All Leave Records</span>
+
+          <div className="d-flex gap-2">
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => exportExcel(prepareDetails(), "Messcut_Details")}
+            >
+              <FileEarmarkExcel className="me-2" /> Excel
+            </Button>
+
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => exportPDF(prepareDetails(), "Messcut_Details")}
+            >
+              <FileEarmarkPdf className="me-2" /> PDF
+            </Button>
+          </div>
+        </Card.Header>
+
         <Card.Body className="p-0">
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="primary" />
-              <p className="mt-3 text-muted">Loading mess cut reports...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <Alert variant="info" className="m-3 text-center">
-              No records found. Try adjusting your filters.
-            </Alert>
-          ) : (
-            <div className="table-responsive">
-              <Table hover bordered size="sm" className="align-middle mb-0">
-                <thead style={{ backgroundColor: "#f2f3f5", color: "#000" }}>
-                  <tr className="text-center">
-                    <th>#</th>
-                    <th>Student Name</th>
-                    <th>Admission No</th>
-                    <th>Branch</th>
-                    <th>Sem</th>
-                    <th>Mess Cuts</th>
-                    <th>Last Date</th>
-                    <th>Action</th>
+          <div className="table-responsive">
+            <Table bordered hover size="sm">
+
+              <thead style={{ background: "#f1f1f1" }}>
+                <tr className="text-center">
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Admission No</th>
+                  <th>Leaving</th>
+                  <th>Returning</th>
+                  <th>Duration</th>
+                  <th>Messcut</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredDetails.map((d, i) => (
+                  <tr key={i}>
+                    <td className="text-center">{i + 1}</td>
+                    <td>{d.name}</td>
+                    <td>{d.admissionNumber}</td>
+                    <td>{d.leavingDate}</td>
+                    <td>{d.returningDate}</td>
+                    <td className="text-center">{calculateDuration(d.leavingDate, d.returningDate)}</td>
+                    <td className="text-center fw-bold text-primary">
+                      {calculateMesscut(d.leavingDate, d.returningDate)}
+                    </td>
+                    <td>{d.reason}</td>
+                    <td className="text-center">
+                      <Badge bg="secondary">{d.status}</Badge>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r, i) => (
-                    <tr key={i}>
-                      <td className="text-center fw-bold">{i + 1}</td>
-                      <td>{r.name}</td>
-                      <td>{r.admissionNumber}</td>
-                      <td>{r.branch}</td>
-                      <td className="text-center">{r.sem}</td>
-                      <td className="text-center">
-                        <Badge bg={getBadgeVariant(r.count)}>{r.count}</Badge>
-                      </td>
-                      <td className="text-center">
-                        {new Date(r.lastDate).toLocaleDateString("en-IN")}
-                      </td>
-                      <td className="text-center">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onClick={() => handleView(r)}
-                        >
-                          <Eye className="me-1" />
-                          View
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          )}
+                ))}
+              </tbody>
+
+            </Table>
+          </div>
         </Card.Body>
       </Card>
 
-      {/* MODAL */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
-            <Person className="me-2" />
-            {student?.name} — {student?.admissionNumber}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {detailLoading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" />
-              <p className="mt-3 text-muted">Loading details...</p>
-            </div>
-          ) : details.length === 0 ? (
-            <Alert variant="info" className="text-center">
-              No Mess Cut Records Found for this student.
-            </Alert>
-          ) : (
-            <>
-              <div className="d-flex justify-content-end mb-3 gap-2 flex-wrap">
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() =>
-                    exportExcel(
-                      prepareDetails(),
-                      `Messcut_${student.admissionNumber}_Details`
-                    )
-                  }
-                >
-                  <FileEarmarkExcel className="me-1" />
-                  Excel
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() =>
-                    exportPDF(
-                      prepareDetails(),
-                      `Messcut_${student.admissionNumber}_Details`,
-                      `Mess Cut Details - ${student.name}`
-                    )
-                  }
-                >
-                  <FileEarmarkPdf className="me-1" />
-                  PDF
-                </Button>
-              </div>
-
-              <div className="table-responsive">
-                <Table bordered hover size="sm" className="align-middle">
-                  <thead style={{ backgroundColor: "#f5f5f5", color: "#000" }}>
-                    <tr className="text-center">
-                      <th>#</th>
-                      <th>Leaving Date</th>
-                      <th>Returning Date</th>
-                      <th>Reason</th>
-                      <th>Status</th>
-                      <th>Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {details.map((d, i) => (
-                      <tr key={i}>
-                        <td className="text-center fw-bold">{i + 1}</td>
-                        <td>{`${d.leavingDate} (${d.leavingTime})`}</td>
-                        <td>{`${d.returningDate} (${d.returningTime})`}</td>
-                        <td>{d.reason}</td>
-                        <td className="text-center">
-                          <Badge bg={getStatusBadge(d.status)}>{d.status}</Badge>
-                        </td>
-                        <td className="text-center">
-                          {calculateDuration(d.leavingDate, d.returningDate)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            </>
-          )}
-        </Modal.Body>
-      </Modal>
     </Container>
   );
 };
