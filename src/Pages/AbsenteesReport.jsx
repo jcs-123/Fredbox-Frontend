@@ -1,21 +1,19 @@
 import React, { useState } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  TextField,
+  Container,
+  Row,
+  Col,
+  Card,
   Button,
+  Form,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  InputAdornment,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+  InputGroup,
+} from "react-bootstrap";
 import { motion } from "framer-motion";
+import { Search } from "react-bootstrap-icons";
 import * as XLSX from "xlsx";
+
+const API_URL = "http://localhost:4000"; // Change when deploying
 
 const AbsenteesReport = () => {
   const [date, setDate] = useState("");
@@ -23,31 +21,32 @@ const AbsenteesReport = () => {
   const [data, setData] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 🔹 Dummy data
-  const allData = [
-    { slno: 5, semester: "S3", roomNo: 519, name: "JOEL T JOSEPH" },
-    { slno: 21, semester: "S5", roomNo: 534, name: "GOUTHAM KRISHNA K SURESH" },
-    { slno: 32, semester: "S3", roomNo: 420, name: "DAVID JOE" },
-    { slno: 36, semester: "S3", roomNo: 416, name: "SUDEV S" },
-    { slno: 52, semester: "S5", roomNo: 319, name: "ADITYARAJ S" },
-    { slno: 64, semester: "S5", roomNo: 331, name: "ARJUN S" },
-    { slno: 74, semester: "S7", roomNo: 214, name: "ABHISHEK AJI" },
-    { slno: 75, semester: "S7", roomNo: 214, name: "AKASH SUNIL" },
-    { slno: 85, semester: "S7", roomNo: 118, name: "ALAN JOSE SANTO" },
-    { slno: 99, semester: "S00", roomNo: 13, name: "HAREESH N. V." },
-    { slno: 1000, semester: "S00", roomNo: 1, name: "Fr CHACKO CHIRAMMEL" },
-  ];
+  // Load absentees from backend
+  const handleLoadData = async () => {
+    if (!date) {
+      alert("Please select a date!");
+      return;
+    }
 
-  // 🔹 Load data
-  const handleLoadData = () => {
-    if (!date) return alert("Please select a date!");
-    setTimeout(() => {
-      setData(allData);
+    try {
+      setIsLoaded(false);
+
+      const res = await fetch(`${API_URL}/attendance/absentees?date=${date}`);
+      const json = await res.json();
+
+      if (!json.success) {
+        alert("Failed to load data!");
+        return;
+      }
+
+      setData(json.data);
       setIsLoaded(true);
-    }, 400);
+    } catch (err) {
+      alert("Error loading data!");
+    }
   };
 
-  // 🔹 Search filter
+  // Search Filter
   const filteredData = data.filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -55,9 +54,13 @@ const AbsenteesReport = () => {
       item.roomNo.toString().includes(search)
   );
 
-  // 🔹 Excel export
+  // Excel Export
   const handleExportExcel = () => {
-    if (data.length === 0) return alert("No data available to export!");
+    if (data.length === 0) {
+      alert("No data available to export!");
+      return;
+    }
+
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "AbsenteesReport");
@@ -65,157 +68,105 @@ const AbsenteesReport = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #f8fbff 0%, #eef3fb 100%)",
-        p: { xs: 2, md: 5 },
-      }}
-    >
+    <Container fluid className="py-4" style={{ background: "#f5f7fb", minHeight: "100vh" }}>
       {/* Header */}
-      <Typography
-        variant="h4"
-        sx={{
-          fontWeight: 700,
-          color: "#1e4fa3",
-          mb: 3,
-          textAlign: "center",
-        }}
-      >
-        Absentees Reports
-      </Typography>
+      <Row className="mb-4">
+        <Col className="text-center">
+          <h2 style={{ fontWeight: "700", color: "#1e4fa3" }}>Absentees Report</h2>
+          <p style={{ color: "#6c757d" }}>View all absent students for a selected date</p>
+        </Col>
+      </Row>
 
-      {/* Controls */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: "center",
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        <TextField
-          label="Select Date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ width: { xs: "100%", sm: 250 } }}
-        />
-        <Button
-          variant="contained"
-          onClick={handleLoadData}
-          sx={{
-            background: "#1e4fa3",
-            textTransform: "none",
-            fontWeight: 600,
-            "&:hover": { background: "#163b7a" },
-          }}
-        >
-          Load Data
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleExportExcel}
-          sx={{
-            background: "#00b4d8",
-            textTransform: "none",
-            fontWeight: 600,
-            "&:hover": { background: "#0096c7" },
-          }}
-        >
-          Create Excel
-        </Button>
-      </Box>
+      {/* Date + Buttons */}
+      <Row className="justify-content-center mb-4">
+        <Col xs={12} md={3} className="mb-2">
+          <Form.Control
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </Col>
+        <Col xs="auto" className="mb-2">
+          <Button onClick={handleLoadData} variant="primary">
+            Load Data
+          </Button>
+        </Col>
+        <Col xs="auto" className="mb-2">
+          <Button onClick={handleExportExcel} variant="info" style={{ color: "#fff" }}>
+            Export Excel
+          </Button>
+        </Col>
+      </Row>
 
-      <Box sx={{ borderBottom: "1px solid #d4d8e3", mb: 2 }} />
-
-      {/* Before loading */}
+      {/* No Data */}
       {!isLoaded ? (
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            color: "#1e4fa3",
-            fontWeight: 600,
-            mt: 5,
-          }}
-        >
-          NO DATA FOUND
-        </Typography>
+        <Row className="mt-5">
+          <Col className="text-center">
+            <h5 style={{ color: "#1e4fa3", fontWeight: 600 }}>NO DATA FOUND</h5>
+          </Col>
+        </Row>
       ) : (
-        <Paper
-          component={motion.div}
-          initial={{ opacity: 0, y: 30 }}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            boxShadow: "0 8px 25px rgba(30,79,163,0.1)",
-            background: "#ffffff",
-          }}
+          transition={{ duration: 0.5 }}
         >
-          {/* Search */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-            <TextField
-              size="small"
-              placeholder="Search..."
-              variant="outlined"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "#1e4fa3" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
+          <Card className="shadow-sm p-3">
+            {/* Search */}
+            <Row className="mb-3 justify-content-end">
+              <Col xs={12} md={4}>
+                <InputGroup>
+                  <InputGroup.Text>
+                    <Search />
+                  </InputGroup.Text>
+                  <Form.Control
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </InputGroup>
+              </Col>
+            </Row>
 
-          {/* Data Table */}
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ background: "#f4f7fc" }}>
-                <TableRow>
-                  <TableCell>Sl.No.</TableCell>
-                  <TableCell>Semester</TableCell>
-                  <TableCell>Room No.</TableCell>
-                  <TableCell>Name</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredData.length > 0 ? (
-                  filteredData.map((row, index) => (
-                    <TableRow key={index} hover>
-                      <TableCell>{row.slno}</TableCell>
-                      <TableCell>{row.semester}</TableCell>
-                      <TableCell>{row.roomNo}</TableCell>
-                      <TableCell>{row.name}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ color: "#6c757d" }}>
-                      No matching records
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            {/* Table */}
+            <div style={{ overflowX: "auto" }}>
+              <Table striped bordered hover responsive>
+                <thead style={{ background: "#e9eef9" }}>
+                  <tr>
+                    <th>Sl.No</th>
+                    <th>Semester</th>
+                    <th>Room No.</th>
+                    <th>Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.length > 0 ? (
+                    filteredData.map((row, index) => (
+                      <tr key={index}>
+                        <td>{row.slno}</td>
+                        <td>{row.semester}</td>
+                        <td>{row.roomNo}</td>
+                        <td>{row.name}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center text-muted">
+                        No matching records
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
 
-          <Typography
-            variant="body2"
-            sx={{ textAlign: "left", mt: 2, color: "#6c757d" }}
-          >
-            Showing {filteredData.length} of {data.length} entries
-          </Typography>
-        </Paper>
+            <div className="text-start text-muted mt-2">
+              Showing {filteredData.length} of {data.length} entries
+            </div>
+          </Card>
+        </motion.div>
       )}
-    </Box>
+    </Container>
   );
 };
 

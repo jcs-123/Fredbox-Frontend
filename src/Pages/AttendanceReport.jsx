@@ -13,56 +13,67 @@ import {
   TableRow,
   Checkbox,
   InputAdornment,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from "@mui/material";
+
 import SearchIcon from "@mui/icons-material/Search";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { motion } from "framer-motion";
-import * as XLSX from "xlsx";
+import axios from "axios";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const AttendanceReport = () => {
   const [date, setDate] = useState("");
   const [search, setSearch] = useState("");
   const [data, setData] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Dummy data
-  const allData = [
-    { slno: 1, semester: "S3", roomNo: 517, name: "Muhammed Naheem T", messcut: false, attendance: false, selected: false },
-    { slno: 2, semester: "S3", roomNo: 517, name: "Fahid Bin Firoz", messcut: false, attendance: false, selected: false },
-    { slno: 3, semester: "S3", roomNo: 530, name: "Rohan M", messcut: true, attendance: false, selected: false },
-    { slno: 4, semester: "S3", roomNo: 530, name: "Jithin P C", messcut: true, attendance: false, selected: false },
-    { slno: 5, semester: "S5", roomNo: 401, name: "Alfred George", messcut: false, attendance: false, selected: false },
-    { slno: 6, semester: "S5", roomNo: 402, name: "Ashik M S", messcut: true, attendance: false, selected: false },
-    { slno: 7, semester: "S7", roomNo: 215, name: "Ronald K S", messcut: false, attendance: false, selected: false },
-    { slno: 8, semester: "S7", roomNo: 212, name: "Akshayraj M V", messcut: true, attendance: false, selected: false },
-  ];
+  // Toast
+  const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
 
-  // Load data
-  const handleLoadData = () => {
-    if (!date) {
-      alert("Please select a date!");
-      return;
-    }
-    setTimeout(() => {
-      setData(allData);
-      setIsLoaded(true);
-    }, 600); // mimic API delay
+  const showToast = (message, severity = "success") => {
+    setToast({ open: true, message, severity });
   };
 
-  // Toggle attendance & room
+  /* =====================================================
+     LOAD DATA
+  ===================================================== */
+  const handleLoadData = async () => {
+    if (!date) {
+      showToast("Please select a date!", "warning");
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${API_URL}/attendance?date=${date}`);
+      setData(res.data.data);
+      setIsLoaded(true);
+      showToast("Data loaded successfully!", "success");
+    } catch (error) {
+      showToast("Error fetching data", "error");
+      console.log(error);
+    }
+  };
+
+  /* =====================================================
+     TOGGLE ATTENDANCE
+  ===================================================== */
   const toggleAttendance = (index) => {
     const updated = [...data];
     updated[index].attendance = !updated[index].attendance;
     setData(updated);
   };
-  const toggleRoom = (index) => {
-    const updated = [...data];
-    updated[index].selected = !updated[index].selected;
-    setData(updated);
-  };
 
-  // Search filter
+  /* =====================================================
+     SEARCH
+  ===================================================== */
   const filteredData = data.filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -70,27 +81,125 @@ const AttendanceReport = () => {
       item.roomNo.toString().includes(search)
   );
 
-  // Dynamic summary
-  const semesters = ["S1", "S3", "S5", "S7", "MTech", "Staff"];
-  const summary = {};
-  semesters.forEach((sem) => {
-    const students = data.filter((s) => s.semester === sem);
-    const total = students.length;
-    const present = students.filter((s) => s.attendance).length;
-    summary[sem] = { absent: total - present, present };
-  });
+  /* =====================================================
+     SAVE ATTENDANCE
+  ===================================================== */
+  const handleSave = async () => {
+    if (data.length === 0) {
+      showToast("No data to save!", "warning");
+      return;
+    }
 
-  const totalAbsent = Object.values(summary).reduce((a, b) => a + (b.absent || 0), 0);
-  const totalPresent = Object.values(summary).reduce((a, b) => a + (b.present || 0), 0);
+    setSaving(true);
 
-  const handleSave = () => alert("Attendance saved successfully!");
-  const handleExportExcel = () => {
-    if (data.length === 0) return alert("No data to export!");
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "AttendanceReport");
-    XLSX.writeFile(workbook, `AttendanceReport_${date}.xlsx`);
+    try {
+      const payload = {
+        date,
+        records: data.map((item) => ({
+          admissionNumber: item.admissionNumber,
+          name: item.name,
+          semester: item.semester,
+          roomNo: item.roomNo,
+          messcut: item.messcut,
+          attendance: item.attendance,
+        })),
+      };
+
+      await axios.post(`${API_URL}/attendance/save`, payload);
+
+      showToast("Attendance saved successfully!", "success");
+    } catch (error) {
+      showToast("Failed to save attendance", "error");
+      console.log(error);
+    }
+
+    setSaving(false);
   };
+
+  /* =====================================================
+     EXPORT EXCEL
+  ===================================================== */
+ const handleExportExcel = async () => {
+  if (data.length === 0) return showToast("No data to export!", "warning");
+
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Attendance Report");
+
+    /* ================== HEADER STYLE ================== */
+    const headerStyle = {
+      font: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "1E4FA3" } },
+      alignment: { vertical: "middle", horizontal: "center" },
+      border: {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      },
+    };
+
+    /* ================== ROW STYLE ================== */
+    const rowStyle = {
+      alignment: { vertical: "middle", horizontal: "center" },
+      border: {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      },
+    };
+
+    /* ================== DEFINE COLUMNS ================== */
+    sheet.columns = [
+      { header: "Sl.No", key: "slno", width: 8 },
+      { header: "Admission No", key: "admissionNumber", width: 18 },
+      { header: "Name", key: "name", width: 25 },
+      { header: "Semester", key: "semester", width: 12 },
+      { header: "Room No", key: "roomNo", width: 12 },
+      { header: "Messcut", key: "messcut", width: 12 },
+      { header: "Attendance", key: "attendance", width: 14 },
+    ];
+
+    /* ================== APPLY HEADER STYLES ================== */
+    sheet.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+
+    /* ================== INSERT DATA ROWS ================== */
+    data.forEach((item, index) => {
+      const row = sheet.addRow({
+        slno: index + 1,
+        admissionNumber: item.admissionNumber,
+        name: item.name,
+        semester: item.semester,
+        roomNo: item.roomNo,
+        messcut: item.messcut ? "Yes" : "No",
+        attendance: item.attendance ? "Present" : "Absent",
+      });
+
+      row.eachCell((cell) => {
+        cell.style = rowStyle;
+      });
+    });
+
+    /* ================== AUTO FILTER ================== */
+    sheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: 7 },
+    };
+
+    /* ================== SAVE FILE ================== */
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `AttendanceReport_${date}.xlsx`);
+
+    showToast("Excel file created successfully!", "success");
+
+  } catch (error) {
+    console.error(error);
+    showToast("Excel export failed!", "error");
+  }
+};
 
   return (
     <Box
@@ -112,7 +221,7 @@ const AttendanceReport = () => {
         Attendance Report
       </Typography>
 
-      {/* Date + Load Button */}
+      {/* DATE INPUT */}
       <Box
         sx={{
           maxWidth: 600,
@@ -144,7 +253,7 @@ const AttendanceReport = () => {
         </Button>
       </Box>
 
-      {/* Before load - No Data Message */}
+      {/* BEFORE LOAD */}
       {!isLoaded ? (
         <Typography
           variant="h6"
@@ -158,7 +267,6 @@ const AttendanceReport = () => {
           NO DATA FOUND
         </Typography>
       ) : (
-        // After load show full table
         <Paper
           component={motion.div}
           initial={{ opacity: 0, y: 30 }}
@@ -171,82 +279,72 @@ const AttendanceReport = () => {
             background: "#ffffff",
           }}
         >
-          {/* Summary Table */}
-          <TableContainer sx={{ mb: 3 }}>
-            <Table size="small">
-              <TableHead sx={{ background: "#f4f7fc" }}>
-                <TableRow>
-                  <TableCell></TableCell>
-                  {semesters.map((s) => (
-                    <TableCell key={s} align="center">
-                      {s}
-                    </TableCell>
-                  ))}
-                  <TableCell align="center">TotalCount</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Absent Count</TableCell>
-                  {semesters.map((s) => (
-                    <TableCell key={s} align="center">
-                      {summary[s]?.absent || 0}
-                    </TableCell>
-                  ))}
-                  <TableCell align="center">{totalAbsent}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Present Count</TableCell>
-                  {semesters.map((s) => (
-                    <TableCell key={s} align="center">
-                      {summary[s]?.present || 0}
-                    </TableCell>
-                  ))}
-                  <TableCell align="center">{totalPresent}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {/* SEARCH + SAVE */}
+      {/* SEARCH + ACTION BUTTONS (Excel moved to TOP) */}
+<Box
+  sx={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    mb: 2,
+    flexWrap: "wrap",
+    gap: 2,
+  }}
+>
+  {/* 🔍 SEARCH BAR */}
+  <TextField
+    size="small"
+    placeholder="Search..."
+    variant="outlined"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <SearchIcon sx={{ color: "#1e4fa3" }} />
+        </InputAdornment>
+      ),
+    }}
+  />
 
-          {/* Search + Save */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-            }}
-          >
-            <TextField
-              size="small"
-              placeholder="Search..."
-              variant="outlined"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "#1e4fa3" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSave}
-              sx={{
-                px: 3,
-                py: 0.8,
-                textTransform: "none",
-                fontWeight: 600,
-              }}
-            >
-              Save
-            </Button>
-          </Box>
+  {/* BUTTON GROUP */}
+  <Box sx={{ display: "flex", gap: 1 }}>
+    {/* 🟢 EXPORT EXCEL */}
+    <Button
+      variant="contained"
+      onClick={handleExportExcel}
+      sx={{
+        background: "#00b4d8",
+        textTransform: "none",
+        fontWeight: 600,
+        "&:hover": { background: "#0096c7" },
+      }}
+    >
+      Create Excel
+    </Button>
 
-          {/* Attendance Table */}
+    {/* 🟢 SAVE BUTTON */}
+    <Button
+      variant="contained"
+      color="success"
+      disabled={saving}
+      onClick={handleSave}
+      sx={{
+        px: 3,
+        py: 0.8,
+        textTransform: "none",
+        fontWeight: 600,
+        display: "flex",
+        gap: 1,
+      }}
+    >
+      {saving ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Save"}
+    </Button>
+  </Box>
+</Box>
+
+
+          {/* MAIN TABLE */}
           <TableContainer>
             <Table>
               <TableHead sx={{ background: "#f4f7fc" }}>
@@ -259,22 +357,15 @@ const AttendanceReport = () => {
                   <TableCell>Attendance</TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {filteredData.map((row, index) => (
                   <TableRow key={index} hover>
-                    <TableCell>{row.slno}</TableCell>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>{row.semester}</TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Checkbox
-                          checked={row.selected}
-                          onChange={() => toggleRoom(index)}
-                          color="secondary"
-                        />
-                        {row.roomNo}
-                      </Box>
-                    </TableCell>
+                    <TableCell>{row.roomNo}</TableCell>
                     <TableCell>{row.name}</TableCell>
+
                     <TableCell align="center">
                       {row.messcut ? (
                         <CheckIcon color="success" />
@@ -282,6 +373,7 @@ const AttendanceReport = () => {
                         <CloseIcon color="error" />
                       )}
                     </TableCell>
+
                     <TableCell align="center">
                       <Checkbox
                         checked={row.attendance}
@@ -295,22 +387,21 @@ const AttendanceReport = () => {
             </Table>
           </TableContainer>
 
-          <Box textAlign="right" mt={2}>
-            <Button
-              variant="contained"
-              onClick={handleExportExcel}
-              sx={{
-                background: "#00b4d8",
-                textTransform: "none",
-                fontWeight: 600,
-                "&:hover": { background: "#0096c7" },
-              }}
-            >
-              Create Excel
-            </Button>
-          </Box>
+ 
         </Paper>
       )}
+
+      {/* TOAST */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity={toast.severity} variant="filled">
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

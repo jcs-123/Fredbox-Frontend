@@ -76,18 +76,25 @@ const calculateDuration = (leave, ret) => {
   // ===============================
   // FETCH DATA
   // ===============================
-  const fetchReport = async () => {
-    setLoading(true);
-    try {
-      const summaryRes = await axios.get(`${API_URL}/api/messcut/report`);
-      const detailsRes = await axios.get(`${API_URL}/api/messcut/all-details`);
+const fetchReport = async () => {
+  setLoading(true);
+  try {
+    const summaryRes = await axios.get(`${API_URL}/api/messcut/report`);
+    const detailsRes = await axios.get(`${API_URL}/api/messcut/all-details`);
 
-      setSummary(summaryRes.data.data || []);
-      setDetails(detailsRes.data.data || []);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setSummary(summaryRes.data.data || []);
+
+    // ⭐ FILTER ONLY ACCEPTED RECORDS ⭐
+    const accepted = (detailsRes.data.data || []).filter(
+      (d) => d.status === "ACCEPT"
+    );
+
+    setDetails(accepted);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchReport();
