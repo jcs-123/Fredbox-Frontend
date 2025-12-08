@@ -1,16 +1,57 @@
-# React + Vite
+# 🌐 SIM – Santhome Information Management System  
+### Developed by **Jyothi JCS Team**
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SIM is a modern, fully digital Student & Hostel Management System designed for  
+Santhome institutions. It simplifies and automates hostel-related activities such as:
 
-Currently, two official plugins are available:
+- Daily Attendance  
+- Messcut Management  
+- Complaints & Service Requests  
+- Approvals & Notifications  
+- Student Information Management  
+- Warden & Admin Dashboards  
+- Real-time Analytics  
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+SIMS is optimized for speed, security, and workflow automation, ensuring a seamless operational experience for students, wardens, and administrators.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 **Features**
+### ⭐ **Student Module**
+- View attendance, messcut, and complaint status  
+- Update personal details  
+- Apply for approvals  
+
+### ⭐ **Warden Module**
+- Take attendance  
+- Approve messcut  
+- Manage complaints  
+- View analytics dashboard  
+
+### ⭐ **Admin Module**
+- User & Role Management  
+- Hostel & Room configuration  
+- System-wide analytics  
+- Data export (Excel / PDF)  
+- Automated reports  
+
+---
+
+## 🔧 **Tech Stack**
+### **Frontend**
+- React (Vite)
+- Bootstrap / MUI
+- Axios
+- Swiper
+- Framer Motion
+
+### **Backend**
+- Node.js / Express
+- MongoDB + Mongoose
+- JWT Authentication
+
+
+

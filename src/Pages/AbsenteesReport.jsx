@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { Search } from "react-bootstrap-icons";
 import * as XLSX from "xlsx";
 
-const API_URL = "http://localhost:4000"; // Change when deploying
+const API_URL = "https://fredbox-backend.onrender.com"; // Change when deploying
 
 const AbsenteesReport = () => {
   const [date, setDate] = useState("");

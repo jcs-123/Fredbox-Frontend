@@ -26,7 +26,7 @@ import axios from "axios";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
 
 const AttendanceReport = () => {
   const [date, setDate] = useState("");
@@ -45,22 +45,49 @@ const AttendanceReport = () => {
   /* =====================================================
      LOAD DATA
   ===================================================== */
-  const handleLoadData = async () => {
-    if (!date) {
-      showToast("Please select a date!", "warning");
-      return;
-    }
+const handleLoadData = async () => {
+  if (!date) {
+    showToast("Please select a date!", "warning");
+    return;
+  }
 
-    try {
-      const res = await axios.get(`${API_URL}/attendance?date=${date}`);
-      setData(res.data.data);
-      setIsLoaded(true);
-      showToast("Data loaded successfully!", "success");
-    } catch (error) {
-      showToast("Error fetching data", "error");
-      console.log(error);
-    }
-  };
+  try {
+    // 1️⃣ Fetch attendance base list
+    const attendanceRes = await axios.get(`${API_URL}/attendance?date=${date}`);
+    let baseList = attendanceRes.data.data || [];
+
+    // 2️⃣ Fetch date-wise messcut list
+    const messcutRes = await axios.get(`${API_URL}/api/messcut/by-date?date=${date}`);
+    const messcutList = messcutRes.data.data || [];
+
+    // 3️⃣ Convert messcut array into quick lookup
+    const messcutMap = {};
+    messcutList.forEach(m => {
+      messcutMap[m.admissionNumber] = true;
+    });
+
+    // 4️⃣ Merge messcut into attendance list
+    baseList = baseList.map((item) => {
+      const isMesscut = messcutMap[item.admissionNumber] === true;
+
+      return {
+        ...item,
+        messcut: isMesscut,
+        attendance: item.attendance ?? true,   // ✔ FIXED
+      };
+    });
+
+    setData(baseList);
+    setIsLoaded(true);
+    showToast("Data loaded successfully!", "success");
+
+  } catch (error) {
+    console.log(error);
+    showToast("Error loading data", "error");
+  }
+};
+
+
 
   /* =====================================================
      TOGGLE ATTENDANCE

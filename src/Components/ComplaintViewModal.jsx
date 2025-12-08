@@ -45,7 +45,7 @@ const ComplaintViewModal = ({ open, handleClose }) => {
 
       // ✅ Correct API path
       axios
-        .get("http://localhost:4000/api/complaints/student", {
+        .get("https://fredbox-backend.onrender.com/api/complaints/student", {
           params: { admissionNo },
         })
         .then((res) => {

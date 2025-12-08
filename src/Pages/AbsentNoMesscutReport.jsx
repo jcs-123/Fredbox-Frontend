@@ -13,9 +13,14 @@ import {
   TableRow,
   InputAdornment,
 } from "@mui/material";
+
 import SearchIcon from "@mui/icons-material/Search";
 import { motion } from "framer-motion";
-import * as XLSX from "xlsx";
+import axios from "axios";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
 
 const AbsentNoMesscutReport = () => {
   const [date, setDate] = useState("");
@@ -23,42 +28,118 @@ const AbsentNoMesscutReport = () => {
   const [data, setData] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 🔹 Dummy data (sample)
-  const allData = [
-    { slno: 1, semester: "S3", roomNo: 517, name: "FAHID BIN FIROZ" },
-    { slno: 5, semester: "S3", roomNo: 519, name: "JOEL T JOSEPH" },
-    { slno: 21, semester: "S5", roomNo: 534, name: "GOUTHAM KRISHNA K SURESH" },
-    { slno: 24, semester: "S5", roomNo: 535, name: "EMIL BOSCO A" },
-    { slno: 36, semester: "S3", roomNo: 416, name: "SUDEV S" },
-    { slno: 41, semester: "S3", roomNo: 413, name: "ALVIN ANUP" },
-    { slno: 45, semester: "S3", roomNo: 411, name: "NAVANEETH J VELLARA" },
-  ];
-
-  // 🔹 Load Data
-  const handleLoadData = () => {
+  /* =====================================================
+        LOAD LIVE DATA
+  ===================================================== */
+  const handleLoadData = async () => {
     if (!date) return alert("Please select a date!");
-    setTimeout(() => {
-      setData(allData);
+
+    try {
+      // 1️⃣ Get ATTENDANCE list
+      const attendanceRes = await axios.get(`${API_URL}/attendance?date=${date}`);
+      const attendanceList = attendanceRes.data.data || [];
+
+      // 2️⃣ Get messcut list
+      const messcutRes = await axios.get(`${API_URL}/api/messcut/by-date?date=${date}`);
+      const messcutList = messcutRes.data.data || [];
+
+      // Messcut lookup
+      const messcutMap = {};
+      messcutList.forEach((m) => {
+        messcutMap[m.admissionNumber] = true;
+      });
+
+      /* =====================================================
+            LOGIC:
+            Absent (attendance=false) AND NOT messcut
+      ===================================================== */
+      const filtered = attendanceList
+        .filter((a) => a.attendance === false && !messcutMap[a.admissionNumber])
+        .map((a, index) => ({
+          slno: index + 1,
+          semester: a.semester,
+          roomNo: a.roomNo,
+          name: a.name,
+        }));
+
+      setData(filtered);
       setIsLoaded(true);
-    }, 400);
+    } catch (err) {
+      console.log(err);
+      alert("Error loading data");
+    }
   };
 
-  // 🔹 Filter data for search
-  const filteredData = data.filter(
-    (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.semester.toLowerCase().includes(search.toLowerCase()) ||
-      item.roomNo.toString().includes(search)
-  );
-
-  // 🔹 Excel Export
-  const handleExportExcel = () => {
+  /* =====================================================
+        EXCEL EXPORT (Styled)
+  ===================================================== */
+  const handleExcelExport = async () => {
     if (data.length === 0) return alert("No data available to export!");
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "AbsentNoMesscut");
-    XLSX.writeFile(workbook, `AbsentNoMesscut_${date}.xlsx`);
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Absent No Messcut");
+
+      const headerStyle = {
+        font: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "1E4FA3" } },
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        },
+      };
+
+      const rowStyle = {
+        alignment: { horizontal: "center", vertical: "middle" },
+        border: {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        },
+      };
+
+      sheet.columns = [
+        { header: "Sl.No", key: "slno", width: 10 },
+        { header: "Semester", key: "semester", width: 15 },
+        { header: "Room No", key: "roomNo", width: 15 },
+        { header: "Name", key: "name", width: 35 },
+      ];
+
+      sheet.getRow(1).eachCell((cell) => (cell.style = headerStyle));
+
+      data.forEach((item) => {
+        const row = sheet.addRow(item);
+        row.eachCell((cell) => (cell.style = rowStyle));
+      });
+
+      sheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: 4 },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `AbsentNoMesscut_${date}.xlsx`);
+
+      alert("Excel created successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to export excel!");
+    }
   };
+
+  /* =====================================================
+        SEARCH
+  ===================================================== */
+  const filteredData = data.filter(
+    (row) =>
+      row.name.toLowerCase().includes(search.toLowerCase()) ||
+      row.semester.toLowerCase().includes(search.toLowerCase()) ||
+      row.roomNo.toString().includes(search)
+  );
 
   return (
     <Box
@@ -68,26 +149,20 @@ const AbsentNoMesscutReport = () => {
         p: { xs: 2, md: 5 },
       }}
     >
-      {/* Page Header */}
+      {/* HEADER */}
       <Typography
         variant="h4"
-        sx={{
-          fontWeight: 700,
-          color: "#1e4fa3",
-          mb: 3,
-          textAlign: "center",
-        }}
+        sx={{ fontWeight: 700, color: "#1e4fa3", mb: 3, textAlign: "center" }}
       >
-        Absent NoMesscut Report
+        Absent No-Messcut Report
       </Typography>
 
-      {/* Date + Buttons */}
+      {/* DATE + BUTTONS */}
       <Box
         sx={{
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
           alignItems: "center",
-          justifyContent: "flex-start",
           gap: 2,
           mb: 3,
         }}
@@ -100,49 +175,56 @@ const AbsentNoMesscutReport = () => {
           InputLabelProps={{ shrink: true }}
           sx={{ width: { xs: "100%", sm: 250 } }}
         />
+
         <Button
           variant="contained"
-          onClick={handleLoadData}
           sx={{
             background: "#1e4fa3",
-            textTransform: "none",
             fontWeight: 600,
-            "&:hover": { background: "#163b7a" },
+            textTransform: "none",
           }}
+          onClick={handleLoadData}
         >
           Load Data
         </Button>
+
         <Button
           variant="contained"
-          onClick={handleExportExcel}
           sx={{
             background: "#00b4d8",
-            textTransform: "none",
             fontWeight: 600,
-            "&:hover": { background: "#0096c7" },
+            textTransform: "none",
           }}
+          onClick={handleExcelExport}
         >
           Create Excel
         </Button>
       </Box>
 
-      <Box
-        sx={{
-          borderBottom: "1px solid #d4d8e3",
-          mb: 2,
-        }}
-      ></Box>
+      {/* SEARCH BAR */}
+      {isLoaded && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: "#1e4fa3" }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+      )}
 
-      {/* If no data */}
+      {/* CONTENT */}
       {!isLoaded ? (
         <Typography
           variant="h6"
-          sx={{
-            textAlign: "center",
-            color: "#1e4fa3",
-            fontWeight: 600,
-            mt: 5,
-          }}
+          sx={{ color: "#1e4fa3", textAlign: "center", mt: 5 }}
         >
           NO DATA FOUND
         </Typography>
@@ -155,49 +237,25 @@ const AbsentNoMesscutReport = () => {
           sx={{
             p: 3,
             borderRadius: 3,
+            background: "#fff",
             boxShadow: "0 8px 25px rgba(30,79,163,0.1)",
-            background: "#ffffff",
           }}
         >
-          {/* Search bar */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              mb: 2,
-            }}
-          >
-            <TextField
-              size="small"
-              placeholder="Search..."
-              variant="outlined"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: "#1e4fa3" }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-
-          {/* Data Table */}
           <TableContainer>
             <Table>
               <TableHead sx={{ background: "#f4f7fc" }}>
                 <TableRow>
-                  <TableCell>Sl.No.</TableCell>
-                  <TableCell>Semester</TableCell>
-                  <TableCell>Room No.</TableCell>
-                  <TableCell>Name</TableCell>
+                  <TableCell><strong>Sl.No.</strong></TableCell>
+                  <TableCell><strong>Semester</strong></TableCell>
+                  <TableCell><strong>Room No.</strong></TableCell>
+                  <TableCell><strong>Name</strong></TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {filteredData.length > 0 ? (
-                  filteredData.map((row, index) => (
-                    <TableRow key={index} hover>
+                  filteredData.map((row) => (
+                    <TableRow key={row.slno} hover>
                       <TableCell>{row.slno}</TableCell>
                       <TableCell>{row.semester}</TableCell>
                       <TableCell>{row.roomNo}</TableCell>

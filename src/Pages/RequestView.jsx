@@ -38,7 +38,7 @@ function RequestView() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const API_URL = "http://localhost:4000"; // 🔧 backend base URL
+  const API_URL = "https://fredbox-backend.onrender.com/messcut"; // 🔧 backend base URL
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 

@@ -93,7 +93,7 @@ function RequestBulkApproval() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com/messcut";
 
   /* 🟢 Fetch Pending Requests */
 useEffect(() => {

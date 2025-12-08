@@ -1,280 +1,365 @@
 import React, { useState } from "react";
 import {
-  Box,
-  Typography,
+  Container,
+  Row,
+  Col,
+  Card,
   Button,
-  TextField,
+  Form,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  TablePagination,
-  useMediaQuery,
-} from "@mui/material";
-import { motion } from "framer-motion";
-import { Search } from "@mui/icons-material";
-import { useTheme } from "@mui/material/styles";
+  InputGroup,
+  Pagination
+} from "react-bootstrap";
 
-// Dummy Data
-const dummyData = [
-  { name: "HAREESH N. V.", sem: "S00", room: "13", dept: "Teacher", breakfast: true, lunch: true, tea: true, dinner: true },
-  { name: "ABHISHEK AJI", sem: "S7", room: "214", dept: "MR", breakfast: true, lunch: true, tea: true, dinner: true },
-  { name: "MUHAMMED NAHEEM T", sem: "S3", room: "517", dept: "CSE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "FAHID BIN FIROZ", sem: "S3", room: "517", dept: "CSE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "ROHAN M", sem: "S3", room: "530", dept: "ECE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "JITHU RENU M", sem: "S3", room: "530", dept: "ECE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "ARWIN SHANTO NEELAMKAVIL", sem: "S3", room: "529", dept: "CSE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "ARON ALEX", sem: "S3", room: "529", dept: "CSE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "ASHIK AHMED", sem: "S3", room: "518", dept: "CE", breakfast: false, lunch: false, tea: false, dinner: false },
-  { name: "NIDHEEP JANARDHAN", sem: "S3", room: "518", dept: "CE", breakfast: false, lunch: false, tea: false, dinner: false },
-];
+import axios from "axios";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
 
 function DateWiseReport() {
   const [selectedDate, setSelectedDate] = useState("");
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleLoadData = () => {
-    setTimeout(() => setData(dummyData), 500);
-  };
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
 
+  /* ======================================================
+       LOAD REAL DATA (Attendance + Messcut + User)
+  ====================================================== */
+ const handleLoadData = async () => {
+  if (!selectedDate) return alert("Please select a date!");
+
+  try {
+    // 1️⃣ Load Attendance
+    const attendanceRes = await axios.get(
+      `${API_URL}/attendance?date=${selectedDate}`
+    );
+    let list = attendanceRes.data.data || [];
+
+    // 2️⃣ Load messcut (full meals object)
+    const messcutRes = await axios.get(
+      `${API_URL}/api/messcut/by-datereport?date=${selectedDate}`
+    );
+
+    // Build messcut lookup
+    const messcutMap = {};
+    messcutRes.data.data.forEach((m) => {
+      messcutMap[m.admissionNumber] = m; // store full object
+    });
+
+    // 3️⃣ Build final output
+    const finalList = await Promise.all(
+      list
+        .filter((s) => s.semester && s.semester !== "N/A") // only students
+        .map(async (student) => {
+          let branch = "N/A";
+
+          // Load department
+          try {
+            const userRes = await axios.get(
+              `${API_URL}/user?admissionNumber=${student.admissionNumber}`
+            );
+            branch = userRes.data?.data?.branch || "N/A";
+          } catch {}
+
+          const mess = messcutMap[student.admissionNumber];
+
+          // 🟢 If no messcut → all meals available
+          const meals = mess
+            ? mess.meals
+            : { B: true, L: true, T: true, D: true };
+
+          return {
+            name: student.name,
+            sem: student.semester,
+            room: student.roomNo,
+            branch,
+            breakfast: meals.B,
+            lunch: meals.L,
+            tea: meals.T,
+            dinner: meals.D,
+            dayType: mess?.dayType || "PRESENT",
+          };
+        })
+    );
+
+    setData(finalList);
+    setPage(1);
+  } catch (err) {
+    console.log(err);
+    alert("Failed to load data.");
+  }
+};
+
+  /* ======================================================
+       FILTER SEARCH
+  ====================================================== */
   const filteredData = data.filter((row) =>
     row.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const paginatedData = filteredData.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
+
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+  /* ======================================================
+       EXPORT EXCEL
+  ====================================================== */
+  const exportExcel = async () => {
+    if (!data.length) return alert("No data!");
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Date Wise Mess Report");
+
+    // TITLE
+    sheet.mergeCells("A1", "I1");
+    sheet.getCell("A1").value = `Date Wise Mess Report - ${selectedDate}`;
+    sheet.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
+    sheet.getCell("A1").alignment = { horizontal: "center" };
+    sheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "1976D2" }
+    };
+
+    // HEADER
+    const headers = [
+      "Sl.No",
+      "Name",
+      "Semester",
+      "Room",
+      "Department",
+      "Breakfast",
+      "Lunch",
+      "Tea",
+      "Dinner"
+    ];
+    const headerRow = sheet.addRow(headers);
+
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "42A5F5" }
+      };
+      cell.alignment = { horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" }
+      };
+    });
+
+    paginatedData.forEach((row, i) => {
+      sheet.addRow([
+        i + 1,
+        row.name,
+        row.sem,
+        row.room,
+        row.branch,
+        row.breakfast ? "Yes" : "No",
+        row.lunch ? "Yes" : "No",
+        row.tea ? "Yes" : "No",
+        row.dinner ? "Yes" : "No"
+      ]);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `DateWiseReport_${selectedDate}.xlsx`);
+  };
+
+  /* ======================================================
+       EXPORT PDF
+  ====================================================== */
+  const exportPDF = () => {
+    if (!data.length) return alert("No data!");
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text(`Date Wise Mess Report - ${selectedDate}`, 14, 15);
+
+    const tableData = paginatedData.map((row, i) => [
+      i + 1,
+      row.name,
+      row.sem,
+      row.room,
+      row.branch,
+      row.breakfast ? "Yes" : "No",
+      row.lunch ? "Yes" : "No",
+      row.tea ? "Yes" : "No",
+      row.dinner ? "Yes" : "No"
+    ]);
+
+    autoTable(doc, {
+      startY: 25,
+      head: [
+        [
+          "Sl.No",
+          "Name",
+          "Semester",
+          "Room",
+          "Department",
+          "Breakfast",
+          "Lunch",
+          "Tea",
+          "Dinner"
+        ]
+      ],
+      body: tableData
+    });
+
+    doc.save(`DateWiseReport_${selectedDate}.pdf`);
+  };
+
+  /* ======================================================
+       RENDER UI
+  ====================================================== */
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
-      style={{
-        fontFamily: "Poppins, sans-serif",
-        padding: isMobile ? "16px" : "40px",
-        backgroundColor: "#f8fafc",
-        minHeight: "100vh",
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          borderRadius: 4,
-          p: { xs: 2, sm: 3, md: 4 },
-          maxWidth: "1200px",
-          margin: "0 auto",
-          background: "linear-gradient(135deg, #ffffff, #f5f9ff)",
-          boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-        }}
-      >
-        {/* Header */}
-        <Typography
-          variant={isMobile ? "h5" : "h4"}
-          align="center"
-          fontWeight="bold"
-          sx={{
-            background: "linear-gradient(135deg, #1565c0, #42a5f5)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 3,
-          }}
-        >
-          Date Wise Mess Report
-        </Typography>
+    <Container fluid className="py-4 bg-light" style={{ minHeight: "100vh" }}>
+      <Row className="justify-content-center">
+        <Col lg={10}>
+          <Card className="shadow-lg border-0 rounded-4">
+            <Card.Body>
+              <h3 className="text-center fw-bold text-primary mb-4">
+                Date Wise Mess Report
+              </h3>
 
-        {/* Controls */}
-        <Box
-          display="flex"
-          flexDirection={isMobile ? "column" : "row"}
-          alignItems="center"
-          gap={2}
-          mb={3}
-        >
-          <TextField
-            type="date"
-            fullWidth
-            size="small"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                background: "white",
-              },
-            }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleLoadData}
-            fullWidth={isMobile}
-            sx={{
-              background: "linear-gradient(135deg, #1e3c72, #2a5298)",
-              textTransform: "none",
-              borderRadius: 2,
-              py: 1.1,
-              px: 3,
-              fontWeight: 600,
-              "&:hover": {
-                background: "linear-gradient(135deg, #0d47a1, #1565c0)",
-              },
-            }}
-          >
-            Load Data
-          </Button>
-        </Box>
+              {/* FILTER */}
+              <Row className="g-3 justify-content-center mb-4">
+                <Col md={4}>
+                  <Form.Control
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="rounded-3"
+                  />
+                </Col>
 
-        {/* Search Bar */}
-        <Box
-          display="flex"
-          justifyContent={isMobile ? "center" : "flex-end"}
-          mb={2}
-        >
-          <Box
-            display="flex"
-            alignItems="center"
-            gap={1}
-            width={isMobile ? "100%" : "250px"}
-          >
-            <Search color="action" />
-            <TextField
-              size="small"
-              placeholder="Search..."
-              fullWidth
-              onChange={(e) => setSearch(e.target.value)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  backgroundColor: "white",
-                },
-              }}
-            />
-          </Box>
-        </Box>
+                <Col md="auto">
+                  <Button
+                    onClick={handleLoadData}
+                    className="px-4 fw-semibold rounded-3"
+                    style={{
+                      background: "linear-gradient(135deg, #1e3c72, #2a5298)",
+                      border: "none"
+                    }}
+                  >
+                    Load Data
+                  </Button>
+                </Col>
+              </Row>
 
-        {/* Table */}
-        {data.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <TableContainer
-              component={Paper}
-              sx={{
-                borderRadius: 3,
-                boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-                overflowX: "auto",
-              }}
-            >
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    {[
-                      "Sl. No",
-                      "Name",
-                      "Semester",
-                      "Room No.",
-                      "Department",
-                      "Breakfast",
-                      "Lunch",
-                      "Tea",
-                      "Dinner",
-                    ].map((header) => (
-                      <TableCell
-                        key={header}
-                        align="center"
-                        sx={{
-                          fontWeight: "bold",
-                          background:
-                            "linear-gradient(135deg, #1976d2, #42a5f5)",
-                          color: "white",
-                          fontSize: { xs: "0.75rem", sm: "0.9rem" },
-                          border: "none",
-                        }}
-                      >
-                        {header}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredData
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row, index) => (
-                      <motion.tr
-                        key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.04 }}
+              {/* SEARCH */}
+              <Row className="justify-content-between mb-3">
+                <Col md={4}>
+                  <InputGroup>
+                    <InputGroup.Text className="bg-white">🔍</InputGroup.Text>
+                    <Form.Control
+                      placeholder="Search Name..."
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="rounded-end-3"
+                    />
+                  </InputGroup>
+                </Col>
+
+                {/* EXPORT BUTTONS */}
+                <Col md="auto" className="d-flex gap-2">
+                  <Button variant="success" onClick={exportExcel}>
+                    Export Excel
+                  </Button>
+                  <Button variant="danger" onClick={exportPDF}>
+                    Export PDF
+                  </Button>
+                </Col>
+              </Row>
+
+              {/* TABLE */}
+              {data.length > 0 ? (
+                <>
+                  <div className="table-responsive shadow-sm rounded-3 mb-3">
+                    <Table bordered hover className="align-middle text-center">
+                      <thead
+                        className="text-white"
                         style={{
                           background:
-                            index % 2 === 0 ? "#f9fbff" : "white",
-                          transition: "0.3s",
+                            "linear-gradient(135deg, #1976d2, #42a5f5)"
                         }}
                       >
-                        <TableCell align="center">
-                          {index + 1 + page * rowsPerPage}
-                        </TableCell>
-                        <TableCell align="center">{row.name}</TableCell>
-                        <TableCell align="center">{row.sem}</TableCell>
-                        <TableCell align="center">{row.room}</TableCell>
-                        <TableCell align="center">{row.dept}</TableCell>
-                        <TableCell align="center">
-                          {row.breakfast ? "✔️" : "✖️"}
-                        </TableCell>
-                        <TableCell align="center">
-                          {row.lunch ? "✔️" : "✖️"}
-                        </TableCell>
-                        <TableCell align="center">
-                          {row.tea ? "✔️" : "✖️"}
-                        </TableCell>
-                        <TableCell align="center">
-                          {row.dinner ? "✔️" : "✖️"}
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                        <tr>
+                          <th className="text-black">Sl. No</th>
+                          <th className="text-black">Name</th>
+                          <th className="text-black"> Semester</th>
+                          <th className="text-black">Room</th>
+                          <th className="text-black">Department</th>
+                          <th className="text-black">Breakfast</th>
+                          <th className="text-black">Lunch</th>
+                          <th className="text-black">Tea</th>
+                          <th className="text-black">Dinner</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedData.map((row, index) => (
+                          <tr key={index}>
+                            <td>{(page - 1) * rowsPerPage + index + 1}</td>
+                            <td>{row.name}</td>
+                            <td>{row.sem}</td>
+                            <td>{row.room}</td>
+                            <td>{row.branch}</td>
+                            <td>{row.breakfast ? "✔️" : "❌"}</td>
+                            <td>{row.lunch ? "✔️" : "❌"}</td>
+                            <td>{row.tea ? "✔️" : "❌"}</td>
+                            <td>{row.dinner ? "✔️" : "❌"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
 
-            {/* Pagination */}
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredData.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={(e, newPage) => setPage(newPage)}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              sx={{
-                borderTop: "1px solid #e0e0e0",
-                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
-                  {
-                    fontSize: "0.875rem",
-                  },
-              }}
-            />
-          </motion.div>
-        ) : (
-          <Box textAlign="center" py={8}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {selectedDate
-                ? "No data found for the selected date."
-                : "Please select a date and load data."}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-    </motion.div>
+                  {/* PAGINATION */}
+                  <Pagination className="justify-content-center">
+                    <Pagination.Prev
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                    />
+                    {[...Array(totalPages)].map((_, i) => (
+                      <Pagination.Item
+                        key={i}
+                        active={page === i + 1}
+                        onClick={() => setPage(i + 1)}
+                      >
+                        {i + 1}
+                      </Pagination.Item>
+                    ))}
+                    <Pagination.Next
+                      disabled={page === totalPages}
+                      onClick={() => setPage(page + 1)}
+                    />
+                  </Pagination>
+                </>
+              ) : (
+                <div className="text-center py-5">
+                  <h5 className="text-secondary">
+                    {selectedDate
+                      ? "No data found for selected date."
+                      : "Select a date and click Load Data."}
+                  </h5>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 

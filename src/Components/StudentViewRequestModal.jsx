@@ -46,7 +46,7 @@ const StudentViewRequestModal = ({ open, handleClose }) => {
       if (!user?.admissionNumber) return;
 
       axios
-        .get("http://localhost:4000/student", {
+        .get("https://fredbox-backend.onrender.com/student", {
           params: { admissionNo: user.admissionNumber },
         })
         .then((res) => setRequests(res.data.data))

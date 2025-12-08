@@ -25,7 +25,7 @@ function AILogin() {
     password: "",
   });
   const navigate = useNavigate();
-  const API_URL = "http://localhost:4000";
+  const API_URL = "https://fredbox-backend.onrender.com";
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -1,201 +1,214 @@
 import React, { useEffect, useState } from "react";
 import $ from "jquery";
 
-// ✅ Core DataTables
+// DataTables
 import "datatables.net-dt/js/dataTables.dataTables";
-import "datatables.net-dt/css/dataTables.dataTables.min.css"; // ✅ use this name (check in node_modules)
+import "datatables.net-dt/css/dataTables.dataTables.min.css";
 
-// ✅ Buttons + Export
+// Buttons
 import "datatables.net-buttons/js/dataTables.buttons";
 import "datatables.net-buttons/js/buttons.html5";
 import "datatables.net-buttons/js/buttons.print";
 import "datatables.net-buttons-dt/css/buttons.dataTables.min.css";
 
+// Required for PDF, Excel, CSV export
 import jszip from "jszip";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  Grid,
-} from "@mui/material";
-
 pdfMake.vfs = pdfFonts.vfs;
 window.JSZip = jszip;
 
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import { Container, Row, Col, Button, Form, Card } from "react-bootstrap";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
+
 const AttendanceComparisonReport = () => {
   const [date, setDate] = useState("");
-  const [data, setData] = useState([]);
+  const [mismatchData, setMismatchData] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Dummy data
-  const allData = [
-    { slno: 1, semester: "S7", branch: "ME", roomNo: 121, name: "ABHINAV P", before: 0, selected: 1 },
-    { slno: 2, semester: "S7", branch: "CSE", roomNo: 118, name: "ALAN JOSE SANTO", before: 0, selected: 1 },
-    { slno: 3, semester: "S7", branch: "CSE", roomNo: 119, name: "SANJAY P J", before: 0, selected: 1 },
-    { slno: 4, semester: "S5", branch: "ME", roomNo: 316, name: "EPHRAYIM THEKKINIYATH ALEX", before: 0, selected: 1 },
-    { slno: 5, semester: "S5", branch: "AD", roomNo: 320, name: "LLOYD SEBASTIAN", before: 0, selected: 1 },
-    { slno: 6, semester: "S5", branch: "AD", roomNo: 334, name: "NASEEF RAHMAN ASHARAF", before: 0, selected: 1 },
-    { slno: 7, semester: "S3", branch: "MR", roomNo: 411, name: "NAVANEETH J VELLARA", before: 0, selected: 1 },
-    { slno: 8, semester: "S3", branch: "CY", roomNo: 419, name: "JOYAL GEORGE JOSEPH", before: 0, selected: 1 },
-    { slno: 9, semester: "S3", branch: "CY", roomNo: 419, name: "MOHAMMED BILAL A T", before: 0, selected: 1 },
-    { slno: 10, semester: "S3", branch: "MR", roomNo: 420, name: "EVAN PATHIPARAMBIL SUNIL", before: 0, selected: 1 },
-  ];
-
-  // Load data
-  const handleLoadData = () => {
-    if (!date) return alert("Please select a date!");
-    setData(allData);
-    setIsLoaded(true);
+  /* -------------------------------------------------------
+        Fetch attendance by date
+  ------------------------------------------------------- */
+  const fetchAttendance = async (d) => {
+    const res = await axios.get(`${API_URL}/attendance?date=${d}`);
+    return res.data.data || [];
   };
 
-  // Initialize DataTable
+  /* -------------------------------------------------------
+       MAIN LOGIC: SHOW ONLY MISMATCH (1→0 & 0→1)
+  ------------------------------------------------------- */
+  const handleLoadData = async () => {
+    if (!date) return toast.warning("Please select a date!");
+
+    try {
+      const selectedDate = new Date(date);
+
+      const yesterday = new Date(selectedDate);
+      yesterday.setDate(selectedDate.getDate() - 1);
+      const yDate = yesterday.toISOString().split("T")[0];
+
+      const todayData = await fetchAttendance(date);
+      const yesterdayData = await fetchAttendance(yDate);
+
+      const beforeMap = {};
+      yesterdayData.forEach((s) => {
+        beforeMap[s.admissionNumber] = s.attendance ? 1 : 0;
+      });
+
+      const compared = todayData.map((stu) => {
+        const before = beforeMap[stu.admissionNumber] ?? null;
+        const today = stu.attendance ? 1 : 0;
+
+        return {
+          slno: stu.slno,
+          admissionNumber: stu.admissionNumber,
+          semester: stu.semester,
+          branch: stu.branch,
+          roomNo: stu.roomNo,
+          name: stu.name,
+          before,
+          today,
+        };
+      });
+
+      const mismatch = compared.filter((r) => r.before !== r.today);
+
+      setMismatchData(mismatch);
+      setIsLoaded(true);
+
+      mismatch.length === 0
+        ? toast.info("No mismatch found!")
+        : toast.success("Mismatch attendance loaded!");
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load attendance!");
+    }
+  };
+
+  /* -------------------------------------------------------
+       INITIALIZE DATATABLE WITH EXPORT BUTTONS
+  ------------------------------------------------------- */
   useEffect(() => {
     if (isLoaded) {
       setTimeout(() => {
-        if ($.fn.DataTable.isDataTable("#comparisonTable")) {
-          $("#comparisonTable").DataTable().destroy();
+        if ($.fn.DataTable.isDataTable("#misTable")) {
+          $("#misTable").DataTable().destroy();
         }
-        $("#comparisonTable").DataTable({
+
+        $("#misTable").DataTable({
           paging: true,
           searching: true,
+          responsive: true,
           dom: "Bfrtip",
-          buttons: ["copy", "excel", "csv", "pdf"],
+          buttons: [
+            "copy",
+            { extend: "excel", title: "Mismatch Attendance" },
+            { extend: "csv", title: "Mismatch Attendance" },
+            {
+              extend: "pdf",
+              title: "Mismatch Attendance",
+              orientation: "landscape",
+              pageSize: "A4",
+            },
+            "print",
+          ],
         });
-      }, 200);
+      }, 500);
     }
   }, [isLoaded]);
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #f8fbff 0%, #eef3fb 100%)",
-        p: { xs: 2, md: 5 },
-      }}
-    >
-      {/* Title */}
-      <Typography
-        variant="h4"
-        sx={{
-          fontWeight: 700,
-          color: "#1e4fa3",
-          mb: 4,
-          textAlign: "center",
-        }}
-      >
-        Attendance Comparison Reports
-      </Typography>
+    <>
+      <Container fluid className="py-4">
+        <h2 className="text-center fw-bold mb-4" style={{ color: "#1e4fa3" }}>
+          Absent Comparison 
+        </h2>
 
-      {/* Input section */}
-      <Paper
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 3,
-          boxShadow: "0 4px 20px rgba(30,79,163,0.15)",
-          background: "#ffffff",
-          maxWidth: 800,
-          mx: "auto",
-        }}
-      >
-        <Grid
-          container
-          spacing={3}
-          alignItems="center"
-          justifyContent="center"
-        >
-          <Grid item xs={12} sm={6} md={5}>
-            <TextField
-              label="Select Date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
+        {/* Input Section */}
+        <Card className="p-4 shadow-sm mb-4 mx-auto" style={{ maxWidth: "850px" }}>
+          <Row className="align-items-end g-3">
+            <Col sm={6}>
+              <Form.Label className="fw-semibold">Select Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Col>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleLoadData}
-              sx={{
-                background: "#1e4fa3",
-                textTransform: "none",
-                fontWeight: 600,
-                py: 1.4,
-                "&:hover": { background: "#153a7a" },
-              }}
-            >
-              Load Data
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+            <Col sm={3}>
+              <Button className="w-100 fw-semibold" style={{ background: "#1e4fa3" }} onClick={handleLoadData}>
+                Load Data
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
-      {/* Table Section */}
-      {!isLoaded ? (
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            color: "#1e4fa3",
-            fontWeight: 600,
-            mt: 6,
-          }}
-        >
-          NO DATA FOUND
-        </Typography>
-      ) : (
-        <Paper
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            boxShadow: "0 8px 25px rgba(30,79,163,0.1)",
-            background: "#ffffff",
-          }}
-        >
-          <div className="table-responsive">
-            <table
-              id="comparisonTable"
-              className="display nowrap"
-              style={{ width: "100%" }}
-            >
-              <thead>
-                <tr>
-                  <th>Sl No</th>
-                  <th>Semester</th>
-                  <th>Branch</th>
-                  <th>Room No</th>
-                  <th>Name</th>
-                  <th>Before Date</th>
-                  <th>Selected Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row, index) => (
-                  <tr key={index}>
-                    <td>{row.slno}</td>
-                    <td>{row.semester}</td>
-                    <td>{row.branch}</td>
-                    <td>{row.roomNo}</td>
-                    <td>{row.name}</td>
-                    <td>{row.before}</td>
-                    <td>{row.selected}</td>
+        {!isLoaded ? (
+          <h5 className="text-center mt-5 fw-bold" style={{ color: "#1e4fa3" }}>
+            NO DATA FOUND
+          </h5>
+        ) : (
+          <Card className="p-4 shadow-sm">
+            <h4 className="fw-bold mb-3" style={{ color: "red" }}>
+              🔥 Mismatch Students (Yesterday vs Today)
+            </h4>
+
+            <div className="table-responsive">
+              <table
+                id="misTable"
+                className="display nowrap table table-bordered align-middle text-center"
+                style={{ width: "100%", fontSize: "15px" }}
+              >
+                <thead style={{ background: "#e8f0fe" }}>
+                  <tr style={{ fontWeight: "bold", color: "#1e4fa3" }}>
+                    <th>Sl No</th>
+                    <th>Admission No</th>
+                    <th>Name</th>
+                    <th>Semester</th>
+                    <th>Room</th>
+                    <th>Yesterday</th>
+                    <th>Today</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-        </Paper>
-      )}
-    </Box>
+                </thead>
+
+                <tbody>
+                  {mismatchData.map((row, index) => (
+                    <tr
+                      key={index}
+                      style={{
+                        background:
+                          row.before === 1 && row.today === 0
+                            ? "#ffebe8"
+                            : row.before === 0 && row.today === 1
+                            ? "#fff2cc"
+                            : "white",
+                      }}
+                    >
+                      <td>{index + 1}</td>
+                      <td>{row.admissionNumber}</td>
+                      <td style={{ textAlign: "left", paddingLeft: "12px" }}>{row.name}</td>
+                      <td>{row.semester}</td>
+                      <td>{row.roomNo}</td>
+                      <td>{row.before}</td>
+                      <td>{row.today}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </Container>
+
+      <ToastContainer position="top-center" autoClose={2000} />
+    </>
   );
 };
 

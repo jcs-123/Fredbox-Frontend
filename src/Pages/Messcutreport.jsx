@@ -25,7 +25,7 @@ import {
   Search,
 } from "react-bootstrap-icons";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
 
 const MesscutReport = () => {
   const [summary, setSummary] = useState([]);
@@ -45,32 +45,35 @@ const calculateMesscut = (leave, ret) => {
     const d1 = new Date(leave);
     const d2 = new Date(ret);
 
-    // total day difference (inclusive)
-    const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+    const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)); 
+    const effective = diff - 1; // exclude leaving day
 
-    // Exclude only leaving day (joining day is NOT counted)
-    const effective = diff - 1;
+    // ⭐ RULE: Minimum 2 days required for messcut
+    if (effective < 2) return 0;
 
-    return effective > 0 ? effective : 0;
+    return effective;
   } catch {
     return 0;
   }
 };
+
 const calculateDuration = (leave, ret) => {
   try {
     const d1 = new Date(leave);
     const d2 = new Date(ret);
 
     const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+    const effective = diff - 1;
 
-    // exclude leaving date
-    const duration = diff - 1;
+    // ⭐ RULE: If below 2 days, duration is 0 days
+    if (effective < 2) return "0 days";
 
-    return duration > 0 ? `${duration} day${duration !== 1 ? "s" : ""}` : "0 days";
+    return `${effective} day${effective !== 1 ? "s" : ""}`;
   } catch {
-    return "N/A";
+    return "0 days";
   }
 };
+
 
 
   // ===============================

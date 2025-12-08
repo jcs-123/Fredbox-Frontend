@@ -119,7 +119,7 @@ const handleMesscutSubmit = async () => {
   }
 
   try {
-    const res = await axios.post("http://localhost:4000/adddetail", formData);
+    const res = await axios.post("https://fredbox-backend.onrender.com/adddetail", formData);
 
     if (res.data.success) {
       toast.success("✅ Mess cut request submitted!");
@@ -156,7 +156,7 @@ const handleComplaintSubmit = async () => {
       complaint: formData.complaint,
     };
 
-    const res = await axios.post("http://localhost:4000/add", payload);
+    const res = await axios.post("https://fredbox-backend.onrender.com/add", payload);
 
     if (res.data.success) {
       toast.success("✅ Complaint submitted successfully!");
@@ -190,7 +190,7 @@ const handlePasswordSubmit = async () => {
     }
 
     // 🔹 Send to backend
-    const res = await axios.put("http://localhost:4000/update-password", {
+    const res = await axios.put("https://fredbox-backend.onrender.com/update-password", {
       admissionNumber: user.admissionNumber,
       currentPassword: passwordData.currentPassword,
       newPassword: passwordData.newPassword,
@@ -234,7 +234,7 @@ useEffect(() => {
 
   // ✅ Fetch fresh details from backend
   axios
-    .get("http://localhost:4000/user", {
+    .get("https://fredbox-backend.onrender.com/user", {
       params: { admissionNumber: storedUser.admissionNumber },
     })
     .then((res) => {
