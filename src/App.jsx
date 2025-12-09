@@ -21,17 +21,25 @@ import AttendanceComparisonReport from './Pages/AttendanceComparisonReport';
 import UserForm from './Pages/UserForm';
 import ForgotPassword from './Pages/ForgotPassword';
 
+import ProtectedRoute from "./Components/ProtectedRoute";
 
 function App() {
   return (
     <>
       <Routes>
-        {/* Login page without layout */}
+
+        {/* Public Routes */}
         <Route path='/login' element={<Login />} />
         <Route path='/' element={<Login />} />
-<Route path="/forgot-password" element={<ForgotPassword/>} />
-        {/* Routes with layout using Outlet */}
-        <Route element={<Layout />}>
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Protected Routes */}
+        <Route element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
+
           <Route path='/dashboard' element={<AdminDashboard />} />
           <Route path='/mess-cut-report' element={<Messcutreport />} />
           <Route path='/name-wise-report' element={<Namewisereport />} />
@@ -39,7 +47,7 @@ function App() {
           <Route path='/Monthly-Attendance-report' element={<Monthlyattendancereport />} />
           <Route path='/Request-View' element={<RequestView />} />
           <Route path='/Request-Bulk-Aprove' element={<RequestBulkAproval />} />
-          <Route path='/Aplology-Request' element={<ApologyRequest />}/>
+          <Route path='/Aplology-Request' element={<ApologyRequest />} />
           <Route path='/holiday-select' element={<HolidaySelect />} />
           <Route path="/complaint-details" element={<ComplaintDetails />} />
           <Route path="/student-details" element={<StudentDetails />} />
@@ -48,15 +56,10 @@ function App() {
           <Route path="/absent-nomesscut-report" element={<AbsentNoMesscutReport />} />
           <Route path="/absentees-report" element={<AbsenteesReport />} />
           <Route path="/attendance-comparison" element={<AttendanceComparisonReport />} />
-
-
-
-
-
-
-
         </Route>
-                <Route path='/userform' element={<UserForm/>}/>
+
+        {/* Public User Form */}
+        <Route path='/userform' element={<UserForm />} />
 
       </Routes>
     </>
