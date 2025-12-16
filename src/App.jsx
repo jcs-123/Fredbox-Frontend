@@ -22,6 +22,7 @@ import UserForm from './Pages/UserForm';
 import ForgotPassword from './Pages/ForgotPassword';
 
 import ProtectedRoute from "./Components/ProtectedRoute";
+import FeePay from './Pages/FeePay';
 
 function App() {
   return (
@@ -56,6 +57,8 @@ function App() {
           <Route path="/absent-nomesscut-report" element={<AbsentNoMesscutReport />} />
           <Route path="/absentees-report" element={<AbsenteesReport />} />
           <Route path="/attendance-comparison" element={<AttendanceComparisonReport />} />
+                    <Route path="/fee-pay" element={<FeePay/>} />
+
         </Route>
 
         {/* Public User Form */}

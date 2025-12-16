@@ -94,6 +94,16 @@ function RequestBulkApproval() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com/messcut";
+const getParentStatusChip = (status) => {
+  switch (status) {
+    case "APPROVE":
+      return <Chip label="Approved" color="success" size="small" />;
+    case "REJECT":
+      return <Chip label="Rejected" color="error" size="small" />;
+    default:
+      return <Chip label="Pending" color="warning" size="small" variant="outlined" />;
+  }
+};
 
   /* 🟢 Fetch Pending Requests */
 useEffect(() => {
@@ -326,11 +336,21 @@ const handleBulkUpdate = async (status) => {
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  {["#", "Name", "Leaving Date", "Leaving Time", "Returning Date", "Returning Time", "Status"].map((head) => (
-                    <TableCell key={head} align="center" sx={{ fontWeight: "bold" }}>
-                      {head}
-                    </TableCell>
-                  ))}
+               {[
+  "#",
+  "Name",
+  "Leaving Date",
+  "Leaving Time",
+  "Returning Date",
+  "Returning Time",
+  "Parent Status",
+  "Admin Status",
+].map((head) => (
+  <TableCell key={head} align="center" sx={{ fontWeight: "bold" }}>
+    {head}
+  </TableCell>
+))}
+
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -349,9 +369,27 @@ const handleBulkUpdate = async (status) => {
                       <TableCell align="center">{req.leavingTime}</TableCell>
                       <TableCell align="center">{req.returningDate}</TableCell>
                       <TableCell align="center">{req.returningTime}</TableCell>
-                      <TableCell align="center">
-                        <Chip label={req.status} color={req.status === "ACCEPT" ? "success" : "warning"} variant="outlined" />
-                      </TableCell>
+                  {/* 🧑‍🤝‍🧑 Parent Status */}
+<TableCell align="center">
+  {getParentStatusChip(req.parentStatus)}
+</TableCell>
+
+{/* 🛂 Admin Status */}
+<TableCell align="center">
+  <Chip
+    label={req.status}
+    color={
+      req.status === "ACCEPT"
+        ? "success"
+        : req.status === "REJECT"
+        ? "error"
+        : "warning"
+    }
+    variant="outlined"
+    size="small"
+  />
+</TableCell>
+
                     </TableRow>
                   ))
                 ) : (

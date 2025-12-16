@@ -65,7 +65,6 @@ const UserForm = () => {
   const [openModal, setOpenModal] = useState(false);
   const [openApology, setOpenApology] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -77,22 +76,45 @@ const UserForm = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 const navigate = useNavigate();
 const [openComplaintView, setOpenComplaintView] = useState(false);
+const [feeData, setFeeData] = useState({
+  totalFee: 0,
+  totalPaid: 0,
+  totalDue: 0,
+});
+useEffect(() => {
+  const storedUser = JSON.parse(localStorage.getItem("user"));
 
-  // Sample payment data for all months
-  const paymentData = [
-    { month: "January 2025", amount: 4500, status: "Paid", dueDate: "05-01-2025", paidDate: "03-01-2025", transactionId: "TXN001234" },
-    { month: "February 2025", amount: 4500, status: "Paid", dueDate: "05-02-2025", paidDate: "02-02-2025", transactionId: "TXN001235" },
-    { month: "March 2025", amount: 4500, status: "Paid", dueDate: "05-03-2025", paidDate: "04-03-2025", transactionId: "TXN001236" },
-    { month: "April 2025", amount: 4500, status: "Paid", dueDate: "05-04-2025", paidDate: "01-04-2025", transactionId: "TXN001237" },
-    { month: "May 2025", amount: 4500, status: "Pending", dueDate: "05-05-2025", paidDate: "-", transactionId: "-" },
-    { month: "June 2025", amount: 4500, status: "Pending", dueDate: "05-06-2025", paidDate: "-", transactionId: "-" },
-    { month: "July 2025", amount: 4500, status: "Pending", dueDate: "05-07-2025", paidDate: "-", transactionId: "-" },
-    { month: "August 2025", amount: 4500, status: "Pending", dueDate: "05-08-2025", paidDate: "-", transactionId: "-" },
-    { month: "September 2025", amount: 4500, status: "Pending", dueDate: "05-09-2025", paidDate: "-", transactionId: "-" },
-    { month: "October 2025", amount: 4500, status: "Pending", dueDate: "05-10-2025", paidDate: "-", transactionId: "-" },
-    { month: "November 2025", amount: 4500, status: "Pending", dueDate: "05-11-2025", paidDate: "-", transactionId: "-" },
-    { month: "December 2025", amount: 4500, status: "Pending", dueDate: "05-12-2025", paidDate: "-", transactionId: "-" },
-  ];
+  if (!storedUser?.admissionNumber) {
+    console.warn("Admission number not found for fee fetch");
+    return;
+  }
+
+  const fetchFeeData = async () => {
+    try {
+      const res = await axios.get(
+        `https://fredbox-backend.onrender.com/fees/get/${storedUser.admissionNumber}`
+      );
+
+      if (res.data.success) {
+        setFeeData({
+          totalFee: res.data.data.totalFee || 0,
+          totalPaid: res.data.data.totalPaid || 0,
+          totalDue: res.data.data.totalDue || 0,
+        });
+
+        console.log("✅ Fee data loaded:", res.data.data);
+      } else {
+        toast.error("Fee data not found");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching fee data:", error);
+      toast.error("Unable to fetch fee details");
+    }
+  };
+
+  fetchFeeData();
+}, []);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -289,13 +311,7 @@ const handleLogout = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handlePaymentDialogOpen = () => {
-    setPaymentDialogOpen(true);
-  };
 
-  const handlePaymentDialogClose = () => {
-    setPaymentDialogOpen(false);
-  };
 
   const handlePasswordDialogOpen = () => {
     setPasswordDialogOpen(true);
@@ -341,9 +357,6 @@ const handleLogout = () => {
       </List>
     </Box>
   );
-
-  const totalPaid = paymentData.filter(p => p.status === "Paid").reduce((sum, p) => sum + p.amount, 0);
-  const totalPending = paymentData.filter(p => p.status === "Pending").reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <Box
@@ -716,80 +729,96 @@ const handleLogout = () => {
             </motion.div>
           </Grid>
 
-          {/* Payment Summary Card */}
-          <Grid item xs={12}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-            >
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 3, md: 4 },
-                  borderRadius: 3,
-                  border: "1px solid #e2e8f0",
-                  background: "white",
-                }}
-              >
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
-                  <Box display="flex" alignItems="center">
-                    <PaymentIcon sx={{ color: "#00bfa6", mr: 1 }} />
-                    <Typography variant="h6" fontWeight={600}>
-                      Payment Summary
-                    </Typography>
-                  </Box>
-                  <Button
-                    variant="contained"
-                    startIcon={<VisibilityIcon />}
-                    onClick={handlePaymentDialogOpen}
-                    sx={{
-                      bgcolor: "#00bfa6",
-                      textTransform: "none",
-                      fontWeight: 600,
-                      "&:hover": { bgcolor: "#009688" },
-                    }}
-                  >
-                    View All Payment Sessions
-                  </Button>
-                </Box>
+      {/* Payment Summary */}
+{/* Payment Summary */}
+<Grid item xs={12}>
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.8 }}
+  >
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 3, md: 4 },
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        background: "white",
+      }}
+    >
+      <Box display="flex" alignItems="center" mb={3}>
+        <PaymentIcon sx={{ color: "#00bfa6", mr: 1 }} />
+        <Typography variant="h6" fontWeight={600}>
+          Fee Summary
+        </Typography>
+      </Box>
 
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={4}>
-                    <Card sx={{ bgcolor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-                      <CardContent sx={{ textAlign: "center" }}>
-                        <Typography variant="body2" color="#16a34a" fontWeight={600} gutterBottom>
-                          Total Paid
-                        </Typography>
-                        <Typography variant="h5" color="#16a34a" fontWeight={700}>
-                          ₹{totalPaid}
-                        </Typography>
-                        <Typography variant="caption" color="#16a34a">
-                          {paymentData.filter(p => p.status === "Paid").length} months paid
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Card sx={{ bgcolor: "#fef2f2", border: "1px solid #fecaca" }}>
-                      <CardContent sx={{ textAlign: "center" }}>
-                        <Typography variant="body2" color="#dc2626" fontWeight={600} gutterBottom>
-                          Total Pending
-                        </Typography>
-                        <Typography variant="h5" color="#dc2626" fontWeight={700}>
-                          ₹{totalPending}
-                        </Typography>
-                        <Typography variant="caption" color="#dc2626">
-                          {paymentData.filter(p => p.status === "Pending").length} months pending
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </motion.div>
-          </Grid>
+      <Grid container spacing={3}>
+       
+
+{/* ADVANCE / PAID */}
+<Grid item xs={12} md={4}>
+  <Card
+    sx={{
+      bgcolor: "#f0fdf4",          // light green
+      border: "1px solid #86efac", // green border
+      borderRadius: 3,
+    }}
+  >
+    <CardContent sx={{ textAlign: "center" }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "#15803d", fontWeight: 600 }} // dark green
+        gutterBottom
+      >
+        Advance
+      </Typography>
+
+      <Typography
+        variant="h4"
+        sx={{ color: "#16a34a", fontWeight: 700 }} // strong green
+      >
+        ₹{feeData?.totalPaid ?? 0}
+      </Typography>
+    </CardContent>
+  </Card>
+</Grid>
+
+{/* TOTAL DUE */}
+<Grid item xs={12} md={4}>
+  <Card
+    sx={{
+      bgcolor: "#fef2f2",          // light red
+      border: "1px solid #fecaca", // red border
+      borderRadius: 3,
+    }}
+  >
+    <CardContent sx={{ textAlign: "center" }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "#b91c1c", fontWeight: 600 }} // dark red
+        gutterBottom
+      >
+        Total Fee Due
+      </Typography>
+
+      <Typography
+        variant="h4"
+        sx={{ color: "#dc2626", fontWeight: 700 }} // strong red
+      >
+        ₹{feeData?.totalDue ?? 0}
+      </Typography>
+    </CardContent>
+  </Card>
+</Grid>
+
+      </Grid>
+    </Paper>
+  </motion.div>
+</Grid>
+
+
 
           {/* Complaint Form */}
           <Grid item xs={12}>
@@ -870,93 +899,7 @@ const handleLogout = () => {
         </Grid>
       </Container>
 
-      {/* Payment Details Dialog */}
-      <Dialog
-        open={paymentDialogOpen}
-        onClose={handlePaymentDialogClose}
-        maxWidth="lg"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center">
-            <CalendarMonthIcon sx={{ color: "#00bfa6", mr: 1 }} />
-            <Typography variant="h6" fontWeight={600}>
-              Monthly Payment Details - All Sessions
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <TableContainer sx={{ maxHeight: 400 }}>
-            <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Month</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Amount (₹)</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Due Date</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Paid Date</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Transaction ID</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: "#f8fafc" }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paymentData.map((payment, index) => (
-                  <TableRow 
-                    key={index}
-                    sx={{ 
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      '&:hover': { bgcolor: '#f8fafc' }
-                    }}
-                  >
-                    <TableCell>{payment.month}</TableCell>
-                    <TableCell>₹{payment.amount}</TableCell>
-                    <TableCell>{getStatusChip(payment.status)}</TableCell>
-                    <TableCell>{payment.dueDate}</TableCell>
-                    <TableCell>{payment.paidDate}</TableCell>
-                    <TableCell>{payment.transactionId}</TableCell>
-                    <TableCell>
-                      {payment.status === "Pending" ? (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          startIcon={<PaymentIcon />}
-                          sx={{
-                            bgcolor: "#00bfa6",
-                            textTransform: "none",
-                            fontSize: "0.75rem",
-                            "&:hover": { bgcolor: "#009688" },
-                          }}
-                        >
-                          Pay Now
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<ReceiptIcon />}
-                          sx={{
-                            textTransform: "none",
-                            fontSize: "0.75rem",
-                            borderColor: "#00bfa6",
-                            color: "#00bfa6",
-                          }}
-                        >
-                          Receipt
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handlePaymentDialogClose} sx={{ textTransform: "none" }}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+  
 
       {/* Change Password Dialog */}
       <Dialog

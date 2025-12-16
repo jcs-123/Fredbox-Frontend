@@ -116,6 +116,16 @@ useEffect(() => {
   };
 }, []);
 
+const getParentStatusChip = (status) => {
+  switch (status) {
+    case "APPROVE":
+      return <Chip label="Approved" color="success" size="small" />;
+    case "REJECT":
+      return <Chip label="Rejected" color="error" size="small" />;
+    default:
+      return <Chip label="Pending" color="warning" size="small" variant="outlined" />;
+  }
+};
 
   /* =========================================
      🟩 Update Status (Accept/Reject)
@@ -344,6 +354,7 @@ useEffect(() => {
                       "Returning Date",
                              "Returning Time",
                       "Reason",
+                      "Parent Status",
                       "Status",
                       "Action",
                     ].map((h) => (
@@ -378,6 +389,9 @@ useEffect(() => {
                                                 <TableCell align="center">{row.returningTime}</TableCell>
 
                         <TableCell align="center">{row.reason}</TableCell>
+                            <TableCell align="center">
+        {getParentStatusChip(row.parentStatus)}
+      </TableCell>
                         <TableCell align="center">
                           <Chip label="Pending" color="warning" variant="outlined" />
                         </TableCell>

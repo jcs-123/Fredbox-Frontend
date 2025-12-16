@@ -36,6 +36,43 @@ const MesscutReport = () => {
   const [toDate, setToDate] = useState("");
 
   const [loading, setLoading] = useState(false);
+const [feeDueMap, setFeeDueMap] = useState({});
+const [feeLoading, setFeeLoading] = useState(false);
+useEffect(() => {
+  const fetchAllFees = async () => {
+    setFeeLoading(true);
+    try {
+      const res = await axios.get("https://fredbox-backend.onrender.com/fees/get");
+      if (res.data.success) {
+        const map = {};
+        res.data.data.forEach((fee) => {
+          map[fee.admissionNumber] = fee.totalDue || 0;
+        });
+        setFeeDueMap(map);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFeeLoading(false);
+    }
+  };
+
+  fetchAllFees();
+}, []);
+
+const isMesscutBlocked = (admissionNumber) =>
+  (feeDueMap[admissionNumber] || 0) >= 10000;
+
+const calculateMesscutWithFeeCheck = (adm, leave, ret) => {
+  if (isMesscutBlocked(adm)) return 0;
+  return calculateMesscut(leave, ret);
+};
+
+const calculateDurationWithFeeCheck = (adm, leave, ret) => {
+  if (isMesscutBlocked(adm)) return "0 days";
+  return calculateDuration(leave, ret);
+};
+
 
   // ===============================
   // CALCULATIONS
@@ -172,18 +209,29 @@ const fetchReport = async () => {
   // ===============================
   // EXPORTS
   // ===============================
-  const prepareDetails = () =>
-    filteredDetails.map((d, i) => ({
-      "#": i + 1,
-      Name: d.name,
-      "Admission No": d.admissionNumber,
-      "Leaving Date": d.leavingDate,
-      "Returning Date": d.returningDate,
-      Duration: calculateDuration(d.leavingDate, d.returningDate),
-      Messcut: calculateMesscut(d.leavingDate, d.returningDate),
-      Reason: d.reason,
-      Status: d.status,
-    }));
+const prepareDetails = () =>
+  filteredDetails.map((d, i) => ({
+    "#": i + 1,
+    Name: d.name,
+    "Admission No": d.admissionNumber,
+    "Leaving Date": d.leavingDate,
+    "Returning Date": d.returningDate,
+
+    // ✅ APPLY FEE CHECK HERE
+   Duration: calculateDuration(d.leavingDate, d.returningDate),
+
+    Messcut: calculateMesscutWithFeeCheck(
+      d.admissionNumber,
+      d.leavingDate,
+      d.returningDate
+    ),
+
+    // ✅ OPTIONAL (VERY USEFUL IN EXPORT)
+    "Fee Due": feeDueMap[d.admissionNumber] || 0,
+
+    Reason: d.reason,
+    Status: d.status,
+  }));
 
  const exportExcel = async (rows, filename) => {
   if (!rows.length) return alert("No data!");
@@ -420,9 +468,22 @@ const fetchReport = async () => {
                     <td>{d.leavingDate}</td>
                     <td>{d.returningDate}</td>
                     <td className="text-center">{calculateDuration(d.leavingDate, d.returningDate)}</td>
-                    <td className="text-center fw-bold text-primary">
-                      {calculateMesscut(d.leavingDate, d.returningDate)}
-                    </td>
+                  
+<td className="text-center fw-bold">
+  {calculateMesscutWithFeeCheck(
+    d.admissionNumber,
+    d.leavingDate,
+    d.returningDate
+  )}
+
+  {isMesscutBlocked(d.admissionNumber) && (
+    <div className="mt-1">
+      <Badge bg="danger">
+        Fee Due ₹{feeDueMap[d.admissionNumber]}
+      </Badge>
+    </div>
+  )}
+</td>
                     <td>{d.reason}</td>
                     <td className="text-center">
                       <Badge bg="secondary">{d.status}</Badge>

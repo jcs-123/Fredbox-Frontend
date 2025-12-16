@@ -70,6 +70,45 @@ const StudentViewRequestModal = ({ open, handleClose }) => {
     if (status === "REJECT") return <Chip color="error" label="REJECT" {...chipProps} />;
     return <Chip color="warning" label="Pending" {...chipProps} />;
   };
+// ✅ Parent Status Chip
+const getParentChip = (status) => {
+  const chipProps = {
+    size: isMobile ? "small" : "medium",
+    sx: {
+      fontWeight: 600,
+      borderRadius: 2,
+      minWidth: 90,
+    },
+  };
+
+  if (status === "APPROVE")
+    return <Chip color="success" label=" APPROVED" {...chipProps} />;
+
+  if (status === "REJECT")
+    return <Chip color="error" label="REJECTED" {...chipProps} />;
+
+  return <Chip color="warning" label=" PENDING" {...chipProps} />;
+};
+
+// ✅ Admin / Warden Status Chip
+const getAdminChip = (status) => {
+  const chipProps = {
+    size: isMobile ? "small" : "medium",
+    sx: {
+      fontWeight: 600,
+      borderRadius: 2,
+      minWidth: 90,
+    },
+  };
+
+  if (status === "ACCEPT")
+    return <Chip color="success" label=" ACCEPTED" {...chipProps} />;
+
+  if (status === "REJECT")
+    return <Chip color="error" label=" REJECTED" {...chipProps} />;
+
+  return <Chip color="warning" label=" PENDING" {...chipProps} />;
+};
 
   const getStatusColor = (status) => {
     if (status === "ACCEPT") return theme.palette.success.main;
@@ -106,38 +145,25 @@ const StudentViewRequestModal = ({ open, handleClose }) => {
             <TableCell sx={{ fontWeight: 600 }}>Leaving</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Returning</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Reason</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+             <TableCell>Parent Status</TableCell>
+    <TableCell>Admin Status</TableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
-          {requests.map((r) => (
-            <TableRow 
-              key={r._id}
-              sx={{ 
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover,
-                  transform: 'translateY(-2px)',
-                  boxShadow: theme.shadows[1]
-                }
-              }}
-            >
-              <TableCell>{formatDate(r.createdAt)}</TableCell>
-              <TableCell>{r.leavingDate} ({r.leavingTime})</TableCell>
-              <TableCell>{r.returningDate} ({r.returningTime})</TableCell>
-              <TableCell sx={{ maxWidth: 200 }}>
-                <Typography 
-                  variant="body2" 
-                  noWrap 
-                  title={r.reason}
-                >
-                  {r.reason}
-                </Typography>
-              </TableCell>
-              <TableCell>{getChip(r.status)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
+<TableBody>
+  {requests.map((r) => (
+    <TableRow key={r._id}>
+      <TableCell>{formatDate(r.createdAt)}</TableCell>
+      <TableCell>{r.leavingDate} ({r.leavingTime})</TableCell>
+      <TableCell>{r.returningDate} ({r.returningTime})</TableCell>
+      <TableCell sx={{ maxWidth: 200 }}>
+        <Typography noWrap title={r.reason}>{r.reason}</Typography>
+      </TableCell>
+      <TableCell>{getParentChip(r.parentStatus)}</TableCell>
+      <TableCell>{getAdminChip(r.status)}</TableCell>
+    </TableRow>
+  ))}
+</TableBody>
+
       </Table>
     </Fade>
   );

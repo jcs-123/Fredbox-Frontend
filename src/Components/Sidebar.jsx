@@ -41,6 +41,7 @@ import {
   CompareArrows,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
+import PaymentsIcon from "@mui/icons-material/Payments";
 
 const drawerWidth = 240;
 
@@ -62,6 +63,12 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Mess Cut Report", icon: <Report />, path: "/mess-cut-report" },
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
     { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
+    {
+  text: "Fee Pay (Bulk Upload)",
+  icon: <PaymentsIcon />,
+  path: "/fee-pay",
+},
+
 
    {
   text: "Attendance Reports",
