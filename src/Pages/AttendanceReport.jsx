@@ -276,7 +276,11 @@ const handleExportExcel = async () => {
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.semester.toLowerCase().includes(search.toLowerCase()) ||
       item.roomNo.toString().includes(search)
+      
   );
+const presentCount = data.filter((d) => d.attendance === true).length;
+const absentCount = data.filter((d) => d.attendance === false).length;
+const totalCount = data.length;
 
   return (
     <Box sx={{ p: 4 }}>
@@ -306,6 +310,77 @@ const handleExportExcel = async () => {
 
       {!isLoaded ? null : (
         <Paper sx={{ p: 3 }}>
+        {/* ================= SUMMARY ================= */}
+<Box
+  sx={{
+    display: "flex",
+    gap: 2,
+    mb: 3,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  }}
+>
+  {/* TOTAL */}
+  <Paper
+    component={motion.div}
+    whileHover={{ scale: 1.05 }}
+    sx={{
+      px: 3,
+      py: 2,
+      minWidth: 160,
+      textAlign: "center",
+      bgcolor: "#e3f2fd",
+    }}
+  >
+    <Typography variant="subtitle2" color="text.secondary">
+      Total Students
+    </Typography>
+    <Typography variant="h4" fontWeight="bold">
+      {totalCount}
+    </Typography>
+  </Paper>
+
+  {/* PRESENT */}
+  <Paper
+    component={motion.div}
+    whileHover={{ scale: 1.05 }}
+    sx={{
+      px: 3,
+      py: 2,
+      minWidth: 160,
+      textAlign: "center",
+      bgcolor: "#e8f5e9",
+    }}
+  >
+    <Typography variant="subtitle2" color="text.secondary">
+      Present
+    </Typography>
+    <Typography variant="h4" fontWeight="bold" color="success.main">
+      {presentCount}
+    </Typography>
+  </Paper>
+
+  {/* ABSENT */}
+  <Paper
+    component={motion.div}
+    whileHover={{ scale: 1.05 }}
+    sx={{
+      px: 3,
+      py: 2,
+      minWidth: 160,
+      textAlign: "center",
+      bgcolor: "#ffebee",
+    }}
+  >
+    <Typography variant="subtitle2" color="text.secondary">
+      Absent
+    </Typography>
+    <Typography variant="h4" fontWeight="bold" color="error.main">
+      {absentCount}
+    </Typography>
+  </Paper>
+</Box>
+
           {/* ACTION BAR */}
           <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
             <TextField
