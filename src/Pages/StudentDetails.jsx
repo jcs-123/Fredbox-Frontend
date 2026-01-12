@@ -26,7 +26,6 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -531,9 +530,7 @@ const exportToPDF = () => {
               <TableCell align="center">
                 <Box display="flex" gap={1} justifyContent="center">
                   <Tooltip title="View Details">
-                    <IconButton size="small">
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
+                  
                   </Tooltip>
                   {row.status === "Pending" && (
                     <Button

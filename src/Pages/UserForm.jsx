@@ -76,6 +76,10 @@ const UserForm = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 const navigate = useNavigate();
 const [openComplaintView, setOpenComplaintView] = useState(false);
+const today = new Date().toISOString().split("T")[0];
+const [holidays, setHolidays] = useState([]);
+const isHoliday = holidays.includes(formData.leavingDate);
+
 const [feeData, setFeeData] = useState({
   totalFee: 0,
   totalPaid: 0,
@@ -115,11 +119,49 @@ useEffect(() => {
   fetchFeeData();
 }, []);
 
+useEffect(() => {
+  const fetchHolidays = async () => {
+    try {
+      const res = await axios.get(
+        "https://fredbox-backend.onrender.com/api/holiday/all"
+      );
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      if (res.data.success) {
+        // store only date strings (yyyy-mm-dd)
+        const holidayDates = res.data.data.map(
+          (h) => h.date.split("T")[0]
+        );
+        setHolidays(holidayDates);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching holidays:", err);
+    }
   };
+
+  fetchHolidays();
+}, []);
+
+const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  setFormData((prev) => {
+    if (name === "leavingDate") {
+      return {
+        ...prev,
+        leavingDate: value,
+        leavingTime: "",
+        returningTime: "",
+      };
+    }
+
+    return {
+      ...prev,
+      [name]: value, // ✅ simple update
+    };
+  });
+};
+
+
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
@@ -602,40 +644,66 @@ const handleLogout = () => {
 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      name="leavingDate"
-                      label="Leaving Date"
-                      type="date"
-                      fullWidth
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                      value={formData.leavingDate}
-                      onChange={handleChange}
-                    />
+                <TextField
+  name="leavingDate"
+  label="Leaving Date"
+  type="date"
+  fullWidth
+  size="small"
+  InputLabelProps={{ shrink: true }}
+  value={formData.leavingDate}
+  onChange={handleChange}
+  inputProps={{
+    min: today,   // ✅ BLOCK PAST DATES
+  }}
+/>
+
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      name="leavingTime"
-                      label="Leaving Time"
-                      type="time"
-                      fullWidth
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                      value={formData.leavingTime}
-                      onChange={handleChange}
-                    />
+<TextField
+  name="leavingTime"
+  label="Leaving Time"
+  select
+  fullWidth
+  size="small"
+  value={formData.leavingTime}
+  onChange={handleChange}
+  disabled={!formData.leavingDate}
+>
+  <MenuItem value="">Select Leaving Time</MenuItem>
+
+  {isHoliday && (
+    <MenuItem key="morning" value="Morning (6AM TO 8AM)">
+      Morning (6AM TO 8AM)
+    </MenuItem>
+  )}
+
+  {formData.leavingDate && (
+    <MenuItem key="evening" value="Evening (4PM TO 6PM)">
+      Evening (4PM TO 6PM)
+    </MenuItem>
+  )}
+</TextField>
+
+
+
+
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      name="returningDate"
-                      label="Returning Date"
-                      type="date"
-                      fullWidth
-                      size="small"
-                      InputLabelProps={{ shrink: true }}
-                      value={formData.returningDate}
-                      onChange={handleChange}
-                    />
+             <TextField
+  name="returningDate"
+  label="Returning Date"
+  type="date"
+  fullWidth
+  size="small"
+  InputLabelProps={{ shrink: true }}
+  value={formData.returningDate}
+  onChange={handleChange}
+  inputProps={{
+    min: formData.leavingDate || today, // ✅ AFTER LEAVING DATE
+  }}
+/>
+
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
