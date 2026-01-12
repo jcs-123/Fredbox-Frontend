@@ -18,8 +18,10 @@ import AttendanceReport from './Pages/AttendanceReport';
 import AbsentNoMesscutReport from './Pages/AbsentNoMesscutReport';
 import AbsenteesReport from './Pages/AbsenteesReport';
 import AttendanceComparisonReport from './Pages/AttendanceComparisonReport';
+import AttendanceMonthlyReport from "./Pages/AttendanceMonthlyReport";
 import UserForm from './Pages/UserForm';
 import ForgotPassword from './Pages/ForgotPassword';
+
 
 import ProtectedRoute from "./Components/ProtectedRoute";
 import FeePay from './Pages/FeePay';
@@ -57,7 +59,9 @@ function App() {
           <Route path="/absent-nomesscut-report" element={<AbsentNoMesscutReport />} />
           <Route path="/absentees-report" element={<AbsenteesReport />} />
           <Route path="/attendance-comparison" element={<AttendanceComparisonReport />} />
-                    <Route path="/fee-pay" element={<FeePay/>} />
+          <Route path="/attendance-monthly-report" element={<AttendanceMonthlyReport />} />
+
+          <Route path="/fee-pay" element={<FeePay />} />
 
         </Route>
 

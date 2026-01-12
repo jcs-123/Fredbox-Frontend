@@ -6,6 +6,7 @@ import {
   Typography,
   Avatar,
   IconButton,
+  Divider,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
@@ -22,55 +23,62 @@ import {
 } from "@mui/icons-material";
 
 import axios from "axios";
+import { motion } from "framer-motion";
 
 import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from "chart.js";
-ChartJS.register(ArcElement, ChartTooltip, Legend);
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
+ChartJS.register(ArcElement, Tooltip, Legend);
 
-/* ===================================================== */
-/* COUNT UP HOOK */
-/* ===================================================== */
-const useCountUp = (target, duration = 1000) => {
+const API_URL =
+  import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
+
+/* =====================================================
+   COUNT UP
+===================================================== */
+const useCountUp = (value, duration = 700) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     let start = 0;
-    const step = target / (duration / 16);
-
+    const step = value / (duration / 16);
     const timer = setInterval(() => {
       start += step;
-      if (start >= target) {
-        setCount(target);
+      if (start >= value) {
+        setCount(value);
         clearInterval(timer);
       } else {
         setCount(Math.floor(start));
       }
     }, 16);
-
     return () => clearInterval(timer);
-  }, [target]);
+  }, [value]);
 
   return count;
 };
 
-/* ===================================================== */
-/* RESPONSIVE PIE CHART */
-/* ===================================================== */
-const ResponsivePieChart = ({ data }) => {
+/* =====================================================
+   ANIMATION VARIANTS
+===================================================== */
+const fadeUp = {
+  hidden: { opacity: 0, y: 25 },
+  visible: { opacity: 1, y: 0 },
+};
+
+/* =====================================================
+   PIE WRAPPER
+===================================================== */
+const PieWrapper = ({ data }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
-    <Box
-      sx={{
-        height: isMobile ? 260 : 350,
-        width: "100%",
-        display: "flex",
-        justifyContent: "center",
-      }}
-    >
+    <Box sx={{ height: isMobile ? 260 : 360 }}>
       <Pie
         data={data}
         options={{
@@ -79,7 +87,10 @@ const ResponsivePieChart = ({ data }) => {
           plugins: {
             legend: {
               position: isMobile ? "bottom" : "right",
-              labels: { padding: 15, usePointStyle: true },
+              labels: {
+                usePointStyle: true,
+                padding: 18,
+              },
             },
           },
         }}
@@ -88,114 +99,125 @@ const ResponsivePieChart = ({ data }) => {
   );
 };
 
-/* ===================================================== */
-/* MAIN DASHBOARD */
-/* ===================================================== */
-const AdminDashboard = () => {
-  const theme = useTheme();
+/* =====================================================
+   STAT CARD
+===================================================== */
+const StatCard = ({ title, value, icon, color, delay }) => {
+  const count = useCountUp(value);
 
-  /* ===================== COUNTS ===================== */
+  return (
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      transition={{ duration: 0.45, delay }}
+      whileHover={{ y: -4 }}
+    >
+      <Card
+        sx={{
+          p: 3,
+          borderRadius: 3,
+          height: "100%",
+          boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
+          borderLeft: `4px solid ${color}`,
+          background: "#ffffff",
+        }}
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography variant="h4" fontWeight={700} color={color}>
+              {count}
+            </Typography>
+            <Typography color="text.secondary" fontSize={14}>
+              {title}
+            </Typography>
+          </Box>
+          <Avatar
+            sx={{
+              bgcolor: `${color}15`,
+              color: color,
+              width: 48,
+              height: 48,
+            }}
+          >
+            {icon}
+          </Avatar>
+        </Box>
+      </Card>
+    </motion.div>
+  );
+};
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+const AdminDashboard = () => {
   const [totalStudents, setTotalStudents] = useState(0);
   const [occupiedRooms, setOccupiedRooms] = useState(0);
-
   const [complaintTotal, setComplaintTotal] = useState(0);
   const [complaintPending, setComplaintPending] = useState(0);
-
   const [apologyPending, setApologyPending] = useState(0);
-
   const [messcutPending, setMesscutPending] = useState(0);
   const [leavingToday, setLeavingToday] = useState(0);
   const [returningToday, setReturningToday] = useState(0);
 
-  /* ===================== LOAD COUNTS ===================== */
   useEffect(() => {
-    loadStudentRoomCounts();
-    loadComplaintCounts();
-    loadApologyCounts();
-    loadMesscutCounts();
+    refreshAll();
   }, []);
 
-  const loadStudentRoomCounts = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/count`);
-      setTotalStudents(res.data.totalStudents || 0);
-      setOccupiedRooms(res.data.occupiedRooms || 0);
-    } catch (err) {
-      console.log("Student/Room Count Error:", err);
-    }
+  const refreshAll = async () => {
+    const [c1, c2, c3, c4] = await Promise.all([
+      axios.get(`${API_URL}/count`),
+      axios.get(`${API_URL}/allcomplaint/count`),
+      axios.get(`${API_URL}/count/pending`),
+      axios.get(`${API_URL}/api/messcut/all-details`),
+    ]);
+
+    setTotalStudents(c1.data.totalStudents || 0);
+    setOccupiedRooms(c1.data.occupiedRooms || 0);
+
+    setComplaintTotal(c2.data.total || 0);
+    setComplaintPending(c2.data.pending || 0);
+
+    setApologyPending(c3.data.pending || 0);
+
+    const today = new Date().toISOString().split("T")[0];
+    let leave = 0,
+      ret = 0;
+
+    c4.data.data.forEach((d) => {
+      if (d.status === "ACCEPT") {
+        if (d.leavingDate === today) leave++;
+        if (d.returningDate === today) ret++;
+      }
+    });
+
+    setLeavingToday(leave);
+    setReturningToday(ret);
+
+    const pending = await axios.get(`${API_URL}/messcut/clear/count`);
+    setMesscutPending(pending.data.pending || 0);
   };
 
-  const loadComplaintCounts = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/allcomplaint/count`);
-      setComplaintTotal(res.data.total || 0);
-      setComplaintPending(res.data.pending || 0);
-    } catch (err) {
-      console.log("Complaint Count Error:", err);
-    }
-  };
-
-  const loadApologyCounts = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/count/pending`);
-      setApologyPending(res.data.pending || 0);
-    } catch (err) {
-      console.log("Apology Count Error:", err);
-    }
-  };
-
-  const loadMesscutCounts = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/messcut/clear/count`);
-      setMesscutPending(res.data.pending || 0);
-      setLeavingToday(res.data.leavingToday || 0);
-      setReturningToday(res.data.returningToday || 0);
-    } catch (err) {
-      console.log("Messcut Count Error:", err);
-    }
-  };
-
-  /* ===================================================== */
-  /* STAT CARD DEFINITIONS */
-  /* ===================================================== */
-  const statsTop = [
-    { title: "Total Students", value: totalStudents, icon: <People />, color: "#1E88E5" },
-    { title: "Occupied Rooms", value: occupiedRooms, icon: <MeetingRoom />, color: "#43A047" },
-    { title: "Pending Complaints", value: complaintPending, icon: <BugReport />, color: "#E53935" },
-    { title: "Pending Apology Requests", value: apologyPending, icon: <Rule />, color: "#FB8C00" },
-  ];
-
-  const statsBottom = [
-    { title: "Pending Messcut", value: messcutPending, icon: <Restaurant />, color: "#5E35B1" },
-    { title: "Today Leaving", value: leavingToday, icon: <EventBusy />, color: "#C2185B" },
-    { title: "Today Returning", value: returningToday, icon: <EventAvailable />, color: "#00897B" },
-  ];
-
-  /* ===================================================== */
-  /* PIE CHART DATA */
-  /* ===================================================== */
-
-  // Existing small chart
-  const pieData = {
-    labels: ["Messcut Pending", "Total Complaints", "Apology Pending"],
+  const pieSmall = {
+    labels: ["Messcut", "Complaints", "Apologies"],
     datasets: [
       {
         data: [messcutPending, complaintTotal, apologyPending],
-        backgroundColor: ["#5E35B1", "#1E88E5", "#8E24AA"],
+        backgroundColor: ["#5E35B1", "#1E88E5", "#FB8C00"],
       },
     ],
   };
 
-  // FULL Summary Chart
-  const fullChartData = {
+  const pieFull = {
     labels: [
-      "Total Students",
-      "Occupied Rooms",
-      "Pending Complaints",
-      "Pending Apology",
-      "Messcut Pending",
-      "Today Leaving",
-      "Today Returning",
+      "Students",
+      "Rooms",
+      "Complaints",
+      "Apology",
+      "Messcut",
+      "Leaving",
+      "Returning",
     ],
     datasets: [
       {
@@ -217,112 +239,129 @@ const AdminDashboard = () => {
           "#C2185B",
           "#00897B",
         ],
-        borderWidth: 2,
       },
     ],
   };
 
-  /* ===================================================== */
-  /* UI OUTPUT */
-  /* ===================================================== */
-
   return (
-    <Box sx={{ p: 4, minHeight: "100vh", background: "#eef1f7" }}>
-
-      {/* REFRESH BTN */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-        <IconButton
-          onClick={() => {
-            loadStudentRoomCounts();
-            loadComplaintCounts();
-            loadApologyCounts();
-            loadMesscutCounts();
-          }}
-        >
+    <Box sx={{ p: 4, minHeight: "100vh", background: "#f5f7fb" }}>
+      {/* HEADER */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={700}>
+            Admin Dashboard
+          </Typography>
+          <Typography fontSize={13} color="text.secondary">
+            Hostel & Student Management Overview
+          </Typography>
+        </Box>
+        <IconButton onClick={refreshAll}>
           <Refresh />
         </IconButton>
       </Box>
 
-      {/* TOP CARDS */}
+      <Divider sx={{ mb: 3 }} />
+
+      {/* TOP STATS */}
       <Grid container spacing={3}>
-        {statsTop.map((item, i) => {
-          const count = useCountUp(item.value);
-          return (
-            <Grid item xs={12} sm={6} md={3} key={i}>
-              <Card
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  background: `linear-gradient(145deg, ${item.color}18, #ffffff)`,
-                  borderLeft: `5px solid ${item.color}`,
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Box>
-                    <Typography fontSize="1.6rem" fontWeight="bold" color={item.color}>
-                      {count}
-                    </Typography>
-                    <Typography color="text.secondary">{item.title}</Typography>
-                  </Box>
-                  <Avatar sx={{ bgcolor: `${item.color}22`, color: item.color }}>
-                    {item.icon}
-                  </Avatar>
-                </Box>
-              </Card>
-            </Grid>
-          );
-        })}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Total Students"
+            value={totalStudents}
+            icon={<People />}
+            color="#1E88E5"
+            delay={0}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Occupied Rooms"
+            value={occupiedRooms}
+            icon={<MeetingRoom />}
+            color="#43A047"
+            delay={0.1}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Pending Complaints"
+            value={complaintPending}
+            icon={<BugReport />}
+            color="#E53935"
+            delay={0.2}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Pending Apologies"
+            value={apologyPending}
+            icon={<Rule />}
+            color="#FB8C00"
+            delay={0.3}
+          />
+        </Grid>
       </Grid>
 
-      {/* BOTTOM CARDS */}
-      <Grid container spacing={3} sx={{ mt: 3 }}>
-        {statsBottom.map((item, i) => {
-          const count = useCountUp(item.value);
-          return (
-            <Grid item xs={12} sm={6} md={4} key={i}>
-              <Card
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  background: `linear-gradient(145deg, ${item.color}18, #ffffff)`,
-                  borderLeft: `5px solid ${item.color}`,
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Box>
-                    <Typography fontSize="1.6rem" fontWeight="bold" color={item.color}>
-                      {count}
-                    </Typography>
-                    <Typography color="text.secondary">{item.title}</Typography>
-                  </Box>
-                  <Avatar sx={{ bgcolor: `${item.color}22`, color: item.color }}>{item.icon}</Avatar>
-                </Box>
-              </Card>
-            </Grid>
-          );
-        })}
+      {/* BOTTOM STATS */}
+      <Grid container spacing={3} mt={1}>
+        <Grid item xs={12} md={4}>
+          <StatCard
+            title="Pending Messcut"
+            value={messcutPending}
+            icon={<Restaurant />}
+            color="#5E35B1"
+            delay={0.4}
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard
+            title="Leaving Today"
+            value={leavingToday}
+            icon={<EventBusy />}
+            color="#C2185B"
+            delay={0.5}
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard
+            title="Returning Today"
+            value={returningToday}
+            icon={<EventAvailable />}
+            color="#00897B"
+            delay={0.6}
+          />
+        </Grid>
       </Grid>
 
-      {/* FULL SUMMARY PIE CHART */}
-      <Box sx={{ mt: 5 }}>
-        <Card sx={{ p: 3, borderRadius: 4 }}>
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-            Overall Summary Analysis
-          </Typography>
-          <ResponsivePieChart data={fullChartData} />
-        </Card>
-      </Box>
+      {/* CHARTS */}
+      <Grid container spacing={3} mt={3}>
+        <Grid item xs={12} md={6}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible">
+            <Card sx={{ p: 3, borderRadius: 3 }}>
+              <Typography fontWeight={600} mb={2}>
+                Overall Summary
+              </Typography>
+              <PieWrapper data={pieFull} />
+            </Card>
+          </motion.div>
+        </Grid>
 
-      {/* COMPLAINT/MESSCUT/APOLOGY CHART */}
-      <Box sx={{ mt: 3 }}>
-        <Card sx={{ p: 3, borderRadius: 4 }}>
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-            Complaints / Messcut / Apology
-          </Typography>
-          <ResponsivePieChart data={pieData} />
-        </Card>
-      </Box>
-
+        <Grid item xs={12} md={6}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible">
+            <Card sx={{ p: 3, borderRadius: 3 }}>
+              <Typography fontWeight={600} mb={2}>
+                Complaints / Messcut / Apology
+              </Typography>
+              <PieWrapper data={pieSmall} />
+            </Card>
+          </motion.div>
+        </Grid>
+      </Grid>
     </Box>
   );
 };

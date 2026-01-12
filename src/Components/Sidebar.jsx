@@ -64,43 +64,48 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
     { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
     {
-  text: "Fee Pay (Bulk Upload)",
-  icon: <PaymentsIcon />,
-  path: "/fee-pay",
-},
+      text: "Fee Pay (Bulk Upload)",
+      icon: <PaymentsIcon />,
+      path: "/fee-pay",
+    },
 
 
-   {
-  text: "Attendance Reports",
-  icon: <Assessment />, // main section icon
-  subMenu: [
     {
-      text: "Attendance Sheet",
-      icon: <AssignmentTurnedIn />, // ✅ clipboard/checklist icon
-      path: "/attendance-report",
+      text: "Attendance Reports",
+      icon: <Assessment />, // main section icon
+      subMenu: [
+        {
+          text: "Attendance Sheet",
+          icon: <AssignmentTurnedIn />, // ✅ clipboard/checklist icon
+          path: "/attendance-report",
+        },
+        {
+          text: "Attendance Monthly Report",
+          icon: <CalendarMonth />,
+          path: "/attendance-monthly-report",
+        },
+        {
+          text: "Present But Mess Cut",
+          icon: <Fastfood />, // ✅ represents mess/canteen-related
+          path: "/present-messcut-report",
+        },
+        {
+          text: "Absent But No Mess Cut",
+          icon: <NoMeals />, // ✅ crossed plate = no mess deduction
+          path: "/absent-nomesscut-report",
+        },
+        {
+          text: "Absentees Report",
+          icon: <Summarize />, // ✅ report/summary style icon
+          path: "/absentees-report",
+        },
+        {
+          text: "Absent Comparison",
+          icon: <CompareArrows />, // ✅ comparison symbol
+          path: "/attendance-comparison",
+        },
+      ],
     },
-    {
-      text: "Present But Mess Cut",
-      icon: <Fastfood />, // ✅ represents mess/canteen-related
-      path: "/present-messcut-report",
-    },
-    {
-      text: "Absent But No Mess Cut",
-      icon: <NoMeals />, // ✅ crossed plate = no mess deduction
-      path: "/absent-nomesscut-report",
-    },
-    {
-      text: "Absentees Report",
-      icon: <Summarize />, // ✅ report/summary style icon
-      path: "/absentees-report",
-    },
-    {
-      text: "Absent Comparison",
-      icon: <CompareArrows />, // ✅ comparison symbol
-      path: "/attendance-comparison",
-    },
-  ],
-},
 
 
     { text: "Request View", icon: <Event />, path: "/request-view" },
