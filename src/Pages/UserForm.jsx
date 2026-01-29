@@ -50,6 +50,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import ComplaintViewModal from "../Components/ComplaintViewModal";
+import OneDayOutingRequestModal from "../Components/OneDayOutingRequestModal";
+
 const UserForm = () => {
   const [formData, setFormData] = useState({
     admissionNo: "",
@@ -67,6 +69,8 @@ const UserForm = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [openOneDayOuting, setOpenOneDayOuting] = useState(false);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -112,7 +116,7 @@ useEffect(() => {
       }
     } catch (error) {
       console.error("❌ Error fetching fee data:", error);
-      toast.error("Unable to fetch fee details");
+      // toast.error("Unable to fetch fee details");
     }
   };
 
@@ -792,6 +796,28 @@ const handleLogout = () => {
                     open={openApology}
                     handleClose={() => setOpenApology(false)}
                   />
+                  <Button
+  variant="outlined"
+  startIcon={<CalendarMonthIcon />}
+  sx={{
+    borderColor: "#00bfa6",
+    color: "#00bfa6",
+    textTransform: "none",
+    fontWeight: 600,
+    "&:hover": {
+      bgcolor: "rgba(0,191,166,0.08)",
+      borderColor: "#009688",
+    },
+  }}
+  onClick={() => setOpenOneDayOuting(true)}
+>
+  One-Day Outing
+</Button>
+<OneDayOutingRequestModal
+  open={openOneDayOuting}
+  onClose={() => setOpenOneDayOuting(false)}
+/>
+
                 </Box>
               </Paper>
             </motion.div>

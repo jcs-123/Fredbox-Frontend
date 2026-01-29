@@ -39,9 +39,11 @@ import {
   Summarize,
   Sms,
   CompareArrows,
+  Nightlife,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import PaymentsIcon from "@mui/icons-material/Payments";
+import { Person } from "react-bootstrap-icons";
 
 const drawerWidth = 240;
 
@@ -60,6 +62,12 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
   /* ======================== MENU STRUCTURE ========================== */
   const menuItems = [
     { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+     { 
+    text: "Student Profile", 
+    icon: <Person/>, 
+    path: "/student-profile" 
+  },
+   
     { text: "Mess Cut Report", icon: <Report />, path: "/mess-cut-report" },
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
     { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
@@ -104,6 +112,7 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
           icon: <CompareArrows />, // ✅ comparison symbol
           path: "/attendance-comparison",
         },
+        
       ],
     },
 
@@ -114,6 +123,17 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Apology Request", icon: <NoteAlt />, path: "/Aplology-Request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
     { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },
+     {
+    text: "Monthly Outing Eligible",
+    icon: <Nightlife />,
+    path: "/outing"
+  },
+  {
+  text: "Monthly Request/Report",
+  icon: <Nightlife />,
+  path: "/outingrequestandreport" // this page
+}
+
   ];
 
   /* ======================== DRAWER CONTENT ========================== */

@@ -25,6 +25,9 @@ import ForgotPassword from './Pages/ForgotPassword';
 
 import ProtectedRoute from "./Components/ProtectedRoute";
 import FeePay from './Pages/FeePay';
+import Studentprofiles from './Pages/Studentprofiles';
+import AdminOutingPage from './Pages/AdminOutingPage';
+import OutingAndReport from './Pages/OutingAndReport';
 
 function App() {
   return (
@@ -44,6 +47,8 @@ function App() {
         }>
 
           <Route path='/dashboard' element={<AdminDashboard />} />
+                    <Route path='/student-profile' element={<Studentprofiles/>} />
+
           <Route path='/mess-cut-report' element={<Messcutreport />} />
           <Route path='/name-wise-report' element={<Namewisereport />} />
           <Route path='/Date-wise-report' element={<DateWiseReport />} />
@@ -62,6 +67,12 @@ function App() {
           <Route path="/attendance-monthly-report" element={<AttendanceMonthlyReport />} />
 
           <Route path="/fee-pay" element={<FeePay />} />
+                    <Route path="/outing" element={<AdminOutingPage/>} />
+<Route
+  path="/outingrequestandreport"
+  element={<OutingAndReport />}
+/>
+
 
         </Route>
 
