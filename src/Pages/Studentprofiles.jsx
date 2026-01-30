@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import * as XLSX from "xlsx"; // For Excel export
+import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-// For PDF table generation
 import "./StudentProfiles.css";
 
 const API = "https://fredbox-backend.onrender.com/studentprofile/api";
@@ -31,6 +30,7 @@ function StudentProfiles() {
     name: "",
     admissionNumber: "",
     phoneNumber: "",
+    parentPhoneNumber: "",
     branch: "",
     roomNo: "",
     year: "",
@@ -98,6 +98,7 @@ function StudentProfiles() {
         "Admission Number": student.admissionNumber || "",
         "Email": student.gmail || "",
         "Phone Number": student.phoneNumber || "",
+        "Parent Phone Number": student.parentPhoneNumber || "",
         "Branch": student.branch || "",
         "Year": student.year || "",
         "Semester": student.sem || "",
@@ -127,125 +128,129 @@ function StudentProfiles() {
   };
 
   // Export to PDF function
-const exportToPDF = () => {
-  setExportLoading(prev => ({ ...prev, pdf: true }));
+  const exportToPDF = () => {
+    setExportLoading(prev => ({ ...prev, pdf: true }));
 
-  try {
-    // Landscape A4
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "pt",
-      format: "a4"
-    });
+    try {
+      // Landscape A4
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "pt",
+        format: "a4"
+      });
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-    const title = "Student Profiles Report";
-    const exportDate = new Date().toLocaleString();
+      const title = "Student Profiles Report";
+      const exportDate = new Date().toLocaleString();
 
-    /* ================= HEADER ================= */
-    doc.setFontSize(18);
-    doc.setTextColor(33);
-    doc.text(title, pageWidth / 2, 40, { align: "center" });
+      /* ================= HEADER ================= */
+      doc.setFontSize(18);
+      doc.setTextColor(33);
+      doc.text(title, pageWidth / 2, 40, { align: "center" });
 
-    doc.setFontSize(10);
-    doc.setTextColor(120);
-    doc.text(`Generated on: ${exportDate}`, 40, 65);
-    doc.text(`Total Students: ${filtered.length}`, pageWidth - 40, 65, {
-      align: "right"
-    });
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text(`Generated on: ${exportDate}`, 40, 65);
+      doc.text(`Total Students: ${filtered.length}`, pageWidth - 40, 65, {
+        align: "right"
+      });
 
-    /* ================= TABLE ================= */
-    autoTable(doc, {
-      startY: 90,
+      /* ================= TABLE ================= */
+      autoTable(doc, {
+        startY: 90,
 
-      head: [[
-        "#",
-        "Name",
-        "Admission No",
-        "Branch",
-        "Year",
-        "Semester",
-        "Room",
-        "Email",
-        "Role"
-      ]],
+        head: [[
+          "#",
+          "Name",
+          "Admission No",
+          "Branch",
+          "Year",
+          "Semester",
+          "Room",
+          "Email",
+          "Student Phone",
+          "Parent Phone",
+          "Role"
+        ]],
 
-      body: filtered.map((s, i) => ([
-        i + 1,
-        s.name || "—",
-        s.admissionNumber || "—",
-        s.branch || "—",
-        s.year || "—",
-        s.sem || "—",
-        s.roomNo || "—",
-        s.gmail || "—",
-        s.Role || "—"
-      ])),
+        body: filtered.map((s, i) => ([
+          i + 1,
+          s.name || "—",
+          s.admissionNumber || "—",
+          s.branch || "—",
+          s.year || "—",
+          s.sem || "—",
+          s.roomNo || "—",
+          s.gmail || "—",
+          s.phoneNumber || "—",
+          s.parentPhoneNumber || "—",
+          s.Role || "—"
+        ])),
 
-      theme: "striped",
+        theme: "striped",
 
-      styles: {
-        fontSize: 9,
-        cellPadding: 6,
-        valign: "middle",
-        overflow: "linebreak" // 🔥 WRAPS TEXT
-      },
+        styles: {
+          fontSize: 9,
+          cellPadding: 6,
+          valign: "middle",
+          overflow: "linebreak"
+        },
 
-      headStyles: {
-        fillColor: [37, 99, 235],
-        textColor: 255,
-        fontStyle: "bold",
-        halign: "center"
-      },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: 255,
+          fontStyle: "bold",
+          halign: "center"
+        },
 
-      alternateRowStyles: {
-        fillColor: [245, 247, 250]
-      },
+        alternateRowStyles: {
+          fillColor: [245, 247, 250]
+        },
 
-      columnStyles: {
-        0: { cellWidth: 30, halign: "center" }, // #
-        1: { cellWidth: 90 },                  // Name
-        2: { cellWidth: 85 },                  // Admission
-        3: { cellWidth: 140 },                 // Branch
-        4: { cellWidth: 70, halign: "center" },
-        5: { cellWidth: 80, halign: "center" },
-        6: { cellWidth: 60, halign: "center" },
-        7: { cellWidth: "auto" },              // 🔥 EMAIL FLEX
-        8: { cellWidth: 60, halign: "center" }
-      },
+        columnStyles: {
+          0: { cellWidth: 30, halign: "center" },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 80 },
+          3: { cellWidth: 120 },
+          4: { cellWidth: 60, halign: "center" },
+          5: { cellWidth: 70, halign: "center" },
+          6: { cellWidth: 55, halign: "center" },
+          7: { cellWidth: "auto" },
+          8: { cellWidth: 80 },
+          9: { cellWidth: 80 },
+          10: { cellWidth: 60, halign: "center" }
+        },
 
-      margin: { left: 30, right: 30 },
+        margin: { left: 30, right: 30 },
 
-      didDrawPage: () => {
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(8);
-        doc.setTextColor(120);
-        doc.text(
-          `Page ${pageCount}`,
-          pageWidth / 2,
-          pageHeight - 20,
-          { align: "center" }
-        );
-      }
-    });
+        didDrawPage: () => {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(120);
+          doc.text(
+            `Page ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 20,
+            { align: "center" }
+          );
+        }
+      });
 
-    doc.save(
-      `Students_Report_${new Date().toISOString().split("T")[0]}.pdf`
-    );
+      doc.save(
+        `Students_Report_${new Date().toISOString().split("T")[0]}.pdf`
+      );
 
-    showNotification("PDF exported successfully!", "success");
+      showNotification("PDF exported successfully!", "success");
 
-  } catch (error) {
-    console.error("PDF export error:", error);
-    showNotification("Error generating PDF", "error");
-  } finally {
-    setExportLoading(prev => ({ ...prev, pdf: false }));
-  }
-};
-
-
+    } catch (error) {
+      console.error("PDF export error:", error);
+      showNotification("Error generating PDF", "error");
+    } finally {
+      setExportLoading(prev => ({ ...prev, pdf: false }));
+    }
+  };
 
   // Export filtered data
   const exportFilteredData = (format) => {
@@ -341,6 +346,7 @@ const exportToPDF = () => {
       name: student.name || "",
       admissionNumber: student.admissionNumber || "",
       phoneNumber: student.phoneNumber || "",
+      parentPhoneNumber: student.parentPhoneNumber || "",
       branch: student.branch || "",
       roomNo: student.roomNo || "",
       year: student.year || "",
@@ -476,7 +482,10 @@ const exportToPDF = () => {
       student.roomNo?.toLowerCase().includes(searchLower) ||
       student.gmail?.toLowerCase().includes(searchLower) ||
       student.year?.toLowerCase().includes(searchLower) ||
-      student.sem?.toLowerCase().includes(searchLower);
+      student.sem?.toLowerCase().includes(searchLower) ||
+      student.phoneNumber?.toLowerCase().includes(searchLower) ||
+      student.parentPhoneNumber?.toLowerCase().includes(searchLower) ||
+      student.parentName?.toLowerCase().includes(searchLower);
     
     const matchesYear = !yearFilter || student.year === yearFilter;
     const matchesBranch = !branchFilter || student.branch === branchFilter;
@@ -510,6 +519,7 @@ const exportToPDF = () => {
       name: "",
       admissionNumber: "",
       phoneNumber: "",
+      parentPhoneNumber: "",
       branch: "",
       roomNo: "",
       year: "",
@@ -639,6 +649,7 @@ const exportToPDF = () => {
                     <div>Admission: {showDeleteConfirm.admissionNumber}</div>
                     <div>Branch: {showDeleteConfirm.branch}</div>
                     <div>Year: {showDeleteConfirm.year} - {showDeleteConfirm.sem}</div>
+                    <div>Parent: {showDeleteConfirm.parentName || "N/A"}</div>
                   </div>
                 </div>
                 <p className="delete-warning-text">This action cannot be undone!</p>
@@ -690,7 +701,7 @@ const exportToPDF = () => {
             <div className="search-icon">🔍</div>
             <input
               type="text"
-              placeholder="Search by name, admission, branch, room, semester..."
+              placeholder="Search by name, admission, branch, room, semester, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="search-input"
@@ -965,7 +976,7 @@ const exportToPDF = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Phone Number</label>
+                    <label>Student Phone Number</label>
                     <input
                       type="tel"
                       placeholder="+91 9876543210"
@@ -975,6 +986,27 @@ const exportToPDF = () => {
                   </div>
 
                   {/* Row 3 */}
+                  <div className="form-group">
+                    <label>Parent Phone Number</label>
+                    <input
+                      type="tel"
+                      placeholder="+91 9876543210"
+                      value={form.parentPhoneNumber}
+                      onChange={(e) => handleFormChange("parentPhoneNumber", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Parent Name</label>
+                    <input
+                      type="text"
+                      placeholder="Parent/Guardian name"
+                      value={form.parentName}
+                      onChange={(e) => handleFormChange("parentName", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Row 4 */}
                   <div className="form-group">
                     <label>Branch *</label>
                     <select
@@ -1007,7 +1039,7 @@ const exportToPDF = () => {
                     </select>
                   </div>
 
-                  {/* Row 4 */}
+                  {/* Row 5 */}
                   <div className="form-group">
                     <label>Semester *</label>
                     <select
@@ -1038,17 +1070,7 @@ const exportToPDF = () => {
                     />
                   </div>
 
-                  {/* Row 5 */}
-                  <div className="form-group">
-                    <label>Parent Name</label>
-                    <input
-                      type="text"
-                      placeholder="Parent/Guardian name"
-                      value={form.parentName}
-                      onChange={(e) => handleFormChange("parentName", e.target.value)}
-                    />
-                  </div>
-
+                  {/* Row 6 */}
                   <div className="form-group">
                     <label>Role *</label>
                     <select
@@ -1064,7 +1086,7 @@ const exportToPDF = () => {
                     </select>
                   </div>
 
-                  {/* Row 6 */}
+                  {/* Row 7 */}
                   <div className="form-group full-width">
                     <label>Password {!showEditForm && "*"}</label>
                     <input
@@ -1241,8 +1263,12 @@ const exportToPDF = () => {
                         <span className="value-mobile">{student.roomNo || 'N/A'}</span>
                       </div>
                       <div className="info-row-mobile">
-                        <span className="label-mobile">Contact:</span>
+                        <span className="label-mobile">Student Phone:</span>
                         <span className="value-mobile">{student.phoneNumber || 'N/A'}</span>
+                      </div>
+                      <div className="info-row-mobile">
+                        <span className="label-mobile">Parent Phone:</span>
+                        <span className="value-mobile">{student.parentPhoneNumber || 'N/A'}</span>
                       </div>
                       <div className="info-row-mobile">
                         <span className="label-mobile">Email:</span>
@@ -1315,7 +1341,8 @@ const exportToPDF = () => {
                       <th width="70px">Profile</th>
                       <th>Student Details</th>
                       <th>Academic Info</th>
-                      <th>Contact</th>
+                      <th>Contact Info</th>
+                      <th>Parent Info</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -1386,11 +1413,9 @@ const exportToPDF = () => {
                                   {student.admissionNumber}
                                 </span>
                               </div>
-                              {student.parentName && (
-                                <div className="parent-info">
-                                  <small>Parent: {student.parentName}</small>
-                                </div>
-                              )}
+                              <div className="student-phone-info">
+                                <small>📱 {student.phoneNumber || 'No phone'}</small>
+                              </div>
                             </div>
                           </td>
 
@@ -1425,12 +1450,30 @@ const exportToPDF = () => {
                           {/* Contact Column */}
                           <td>
                             <div className="contact-info">
-                              <div className="phone-info">
-                                {student.phoneNumber || 'No phone'}
-                              </div>
                               <div className="email-info">
-                                <small>{student.gmail}</small>
+                                <strong>Email:</strong>
+                                <div className="email-text">{student.gmail}</div>
                               </div>
+                            </div>
+                          </td>
+
+                          {/* Parent Info Column */}
+                          <td>
+                            <div className="parent-info-column">
+                              {student.parentName ? (
+                                <>
+                                  <div className="parent-name">
+                                    <strong>👨‍👩‍👧‍👦 {student.parentName}</strong>
+                                  </div>
+                                  <div className="parent-phone">
+                                    <small>📞 {student.parentPhoneNumber || 'No phone'}</small>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="no-parent-info">
+                                  <small>No parent info</small>
+                                </div>
+                              )}
                             </div>
                           </td>
 

@@ -18,10 +18,8 @@ import {
 import axios from "axios";
 
 /* ================= API BASE ================= */
-const API =
-  window.location.hostname === "localhost"
-    ? "http://localhost:4000"
-    : "https://fredbox-backend.onrender.com";
+const API = "https://fredbox-backend.onrender.com";
+
 
 const semesters = [
   "Sem1",
