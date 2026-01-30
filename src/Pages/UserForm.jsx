@@ -1158,7 +1158,7 @@ const handleLogout = () => {
                 lineHeight: 1.6,
               }}
             >
-              Student Information Management System (SIM Portal) — developed to
+              Santhome Information Management System (SIM Portal) — developed to
               simplify and unify student, hostel, and mess data management at{" "}
               <Box component="span" sx={{ fontWeight: 600, color: "#00bfa6" }}>
                 Jyothi Engineering College
@@ -1191,7 +1191,7 @@ const handleLogout = () => {
               <Box component="span" sx={{ color: "#00bfa6", fontWeight: 600 }}>
                 JCS@JECC
               </Box>{" "}
-              | Student Information Management System
+              | Santhome Information Management System
             </Typography>
           </Box>
         </motion.div>
