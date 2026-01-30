@@ -28,6 +28,7 @@ import FeePay from './Pages/FeePay';
 import Studentprofiles from './Pages/Studentprofiles';
 import AdminOutingPage from './Pages/AdminOutingPage';
 import OutingAndReport from './Pages/OutingAndReport';
+import SemesterBulkChange from './Pages/SemesterBulkChange';
 
 function App() {
   return (
@@ -47,7 +48,7 @@ function App() {
         }>
 
           <Route path='/dashboard' element={<AdminDashboard />} />
-                    <Route path='/student-profile' element={<Studentprofiles/>} />
+          <Route path='/student-profile' element={<Studentprofiles />} />
 
           <Route path='/mess-cut-report' element={<Messcutreport />} />
           <Route path='/name-wise-report' element={<Namewisereport />} />
@@ -67,13 +68,16 @@ function App() {
           <Route path="/attendance-monthly-report" element={<AttendanceMonthlyReport />} />
 
           <Route path="/fee-pay" element={<FeePay />} />
-                    <Route path="/outing" element={<AdminOutingPage/>} />
-<Route
-  path="/outingrequestandreport"
-  element={<OutingAndReport />}
-/>
+          <Route path="/outing" element={<AdminOutingPage />} />
+          <Route
+            path="/outingrequestandreport"
+            element={<OutingAndReport />}
+          />
 
-
+          <Route
+            path="/semester-bulk-change"
+            element={<SemesterBulkChange />}
+          />
         </Route>
 
         {/* Public User Form */}

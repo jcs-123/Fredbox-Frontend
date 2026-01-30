@@ -62,12 +62,12 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
   /* ======================== MENU STRUCTURE ========================== */
   const menuItems = [
     { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-     { 
-    text: "Student Profile", 
-    icon: <Person/>, 
-    path: "/student-profile" 
-  },
-   
+    {
+      text: "Student Profile",
+      icon: <Person />,
+      path: "/student-profile"
+    },
+
     { text: "Mess Cut Report", icon: <Report />, path: "/mess-cut-report" },
     { text: "Name Wise Report", icon: <People />, path: "/name-wise-report" },
     { text: "Date Wise Report", icon: <CalendarMonth />, path: "/date-wise-report" },
@@ -112,7 +112,7 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
           icon: <CompareArrows />, // ✅ comparison symbol
           path: "/attendance-comparison",
         },
-        
+
       ],
     },
 
@@ -123,16 +123,22 @@ function Sidebar({ mobileOpen, handleDrawerToggle }) {
     { text: "Apology Request", icon: <NoteAlt />, path: "/Aplology-Request" },
     { text: "Apology Request View", icon: <NoteAlt />, path: "/student-details" },
     { text: "Complaint View", icon: <ErrorOutline />, path: "/complaint-details" },
-     {
-    text: "Monthly Outing Eligible",
-    icon: <Nightlife />,
-    path: "/outing"
-  },
-  {
-  text: "Monthly Request/Report",
-  icon: <Nightlife />,
-  path: "/outingrequestandreport" // this page
-}
+    {
+      text: "Monthly Outing Eligible",
+      icon: <Nightlife />,
+      path: "/outing"
+    },
+    {
+      text: "Monthly Request/Report",
+      icon: <Nightlife />,
+      path: "/outingrequestandreport" // this page
+    },
+    {
+      text: "Semester Bulk Change",
+      icon: <School />,
+      path: "/semester-bulk-change",
+    }
+
 
   ];
 
