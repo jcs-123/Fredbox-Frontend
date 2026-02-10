@@ -27,7 +27,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const API_URL =
-    import.meta.env.VITE_API_URL || "https://fredbox-backend.onrender.com";
+    import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const MesscutManagement = () => {
     /* ================= STATE ================= */
@@ -111,8 +111,10 @@ const MesscutManagement = () => {
 
     /* ================= DATE EDIT ================= */
     const openDateModal = (r) => {
-        if (!r._id) {
-            alert("Invalid record. Please refresh.");
+        console.log("Clicked record:", r);
+
+        if (!r || !r._id) {
+            setError("Record ID missing. Please refresh the page.");
             return;
         }
 
@@ -123,6 +125,7 @@ const MesscutManagement = () => {
         });
         setShowDateModal(true);
     };
+
 
     const submitDateChange = async (e) => {
         e.preventDefault();
