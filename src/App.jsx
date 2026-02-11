@@ -68,7 +68,7 @@ function App() {
           <Route path="/absentees-report" element={<AbsenteesReport />} />
           <Route path="/attendance-comparison" element={<AttendanceComparisonReport />} />
           <Route path="/attendance-monthly-report" element={<AttendanceMonthlyReport />} />
-        <Route path="/messcut-management" element={<MesscutManagement />} />
+          <Route path="/messcut-management" element={<MesscutManagement />} />
 
           <Route path="/fee-pay" element={<FeePay />} />
           <Route path="/outing" element={<AdminOutingPage />} />
